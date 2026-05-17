@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model User {
+  id        String   @id @default(uuid())
+  clerkId   String   @unique
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  audits    Audit[]
+  analyses  Analysis[]
+}
+
+model Audit {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  status      String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED
+  contractUrl String?
+  findings    Finding[]
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Finding {
+  id          String   @id @default(uuid())
+  severity    String   // HIGH, MEDIUM, LOW, INFO
+  title       String
+  description String
+  location    String?  // File path or line number
+  auditId     String
+  audit       Audit    @relation(fields: [auditId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Analysis {
+  id                    String   @id @default(uuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id])
+  filename              String
+  originalCode          String   @db.Text
+  optimizedCode         String?  @db.Text
+  securityScore         Int?
+  severityTag           String?  // 'CRITICAL' | 'HIGH_RISK' | 'MEDIUM_RISK' | 'LOW_RISK' | 'CRITICAL_PASS'
+  vulnerabilities       Json?
+  optimizations         Json?
+  optimizationInsights  Json?
+  gasSavedPercent       Decimal?
+  gasProjection         Json?
+  mantleCompatibility   Json?
+  summary               String?
+  address               String?
+  createdAt             DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+}
+
+

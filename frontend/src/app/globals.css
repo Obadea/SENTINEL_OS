@@ -1,0 +1,205 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Surface Colors */
+  --color-surface: #131313;
+  --color-surface-dim: #131313;
+  --color-surface-bright: #3a3939;
+  --color-surface-container-lowest: #0e0e0e;
+  --color-surface-container-low: #1c1b1b;
+  --color-surface-container: #201f1f;
+  --color-surface-container-high: #2a2a2a;
+  --color-surface-container-highest: #353534;
+  --color-on-surface: #e5e2e1;
+  --color-on-surface-variant: #c3caad;
+  --color-inverse-surface: #e5e2e1;
+  --color-inverse-on-surface: #313030;
+  --color-outline: #8d9479;
+  --color-outline-variant: #434933;
+  --color-surface-tint: #a1d800;
+
+  /* Primary Colors */
+  --color-primary: #ffffff;
+  --color-on-primary: #253500;
+  --color-primary-container: #b8f600;
+  --color-on-primary-container: #506e00;
+  --color-inverse-primary: #4b6700;
+
+  /* Secondary Colors */
+  --color-secondary: #ddb7ff;
+  --color-on-secondary: #490080;
+  --color-secondary-container: #6f00be;
+  --color-on-secondary-container: #d6a9ff;
+
+  /* Tertiary Colors */
+  --color-tertiary: #ffffff;
+  --color-on-tertiary: #00363d;
+  --color-tertiary-container: #9cf0ff;
+  --color-on-tertiary-container: #006f7c;
+
+  /* Error Colors */
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+
+  /* Background */
+  --color-background: #131313;
+  --color-on-background: #e5e2e1;
+  --color-surface-variant: #353534;
+
+  /* Accent Colors (Neon) */
+  --color-neon-green: #a1d800;
+  --color-neon-violet: #ddb7ff;
+  --color-neon-cyan: #00daf3;
+
+  /* Border Colors */
+  --color-wireframe: rgba(255, 255, 255, 0.1);
+
+  /* Fonts */
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-geist-sans);
+  --font-mono: var(--font-jetbrains-mono);
+
+  /* Radius */
+  --radius-sm: 0.125rem;
+  --radius-default: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  /* Shadows (None as per Brutalest design, using glows instead) */
+  --shadow-none: none;
+  --shadow-neon-green: 0 0 10px rgba(161, 216, 0, 0.5);
+  --shadow-neon-violet: 0 0 10px rgba(221, 183, 255, 0.5);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-on-background);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a1d800;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(22, 22, 22, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Terminal style code block */
+.terminal {
+  background-color: #0e0e0e;
+  border: 1px solid var(--color-wireframe);
+  border-radius: var(--radius-default);
+  font-family: var(--font-mono);
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.terminal-header {
+  border-bottom: 1px solid var(--color-wireframe);
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--color-on-surface-variant);
+}
+
+
+/* NOTE: clerk UI customization */
+
+[data-localization-key="userProfile.navbar.title"] {
+  color: #ffffff !important;
+}
+
+[data-localization-key="userProfile.navbar.description"] {
+  color: #8d9479 !important;
+}
+
+/* Section title texts - "Profile", "Email addresses", "Connected accounts" */
+.cl-profileSectionTitleText {
+  color: #ffffff !important;
+}
+
+/* Main body text - email address, "Google" */
+[data-variant="body"][data-color="inherit"] {
+  color: #ffffff !important;
+}
+
+/* Secondary text - "• obadeagbenga@gmail.com" next to Google */
+[data-variant="body"][data-color="secondary"] {
+  color: #8d9479 !important;
+}
+
+/* User's display name */
+.cl-userPreviewMainIdentifierText {
+  color: #ffffff !important;
+}
+
+/* "Update profile" and "Add email address" buttons */
+.cl-profileSectionPrimaryButton {
+  color: #a1d800 !important;
+}
+
+/* Header title - "Profile details" */
+.cl-headerTitle {
+  color: #a1d800 !important;
+}
+
+/* Badge - "Primary" */
+.cl-badge {
+  color: #000000 !important;
+  background-color: #a1d800 !important;
+}
+
+/* Global Selection Style */
+*::selection {
+  background-color: #a1d800 !important;
+  color: #000000 !important;
+}
+
+*::-moz-selection {
+  background-color: #a1d800 !important;
+  color: #000000 !important;
+}
