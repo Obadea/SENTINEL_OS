@@ -12,8 +12,10 @@ export function SecurityPulseChart({ value = 74 }: SecurityPulseChartProps) {
         value={value}
         label="Security Pulse"
         primary={{
+          40: "#a1d800",
           0: "#a1d800",
-          70: "#ff4d4d"
+          1: "#ff4d4d",
+          30: "#ff4d4d"
         }}
         showPercentage
       />

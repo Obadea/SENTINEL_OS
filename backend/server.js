@@ -18,7 +18,12 @@ import analysisRouter from './routes/analysis.js';
 
 const app = express();
 
-app.use(express.json());
+// NOTE: Default is 100kb, user upload files up to 6000 code lines, so we need to increase the limit
+// app.use(express.json());
+
+//this was added so user upload large code files up to 6000 code lines
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(
     cors({
         origin: [

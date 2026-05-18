@@ -397,6 +397,7 @@ function shallowEqualWithoutChildren(
 ) {
   if (a === b) return true;
   if (!a || !b) return false;
+  if (a.children !== b.children) return false;
   const keysA = Object.keys(a).filter((k) => k !== 'children');
   const keysB = Object.keys(b).filter((k) => k !== 'children');
   if (keysA.length !== keysB.length) return false;

@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🛡️ SENTINEL OS — Cyber-Industrial Security Frontend
 
-## Getting Started
+Welcome to the frontend application of **Sentinel OS**, a high-fidelity, brutally industrial smart contract security workspace. Built using Next.js 16 and Tailwind CSS v4, this dashboard provides web3 developers with real-time Solidity syntax highlighting via Monaco Editor, a dedicated code compiler dashboard, interactive gas/compatibility charts, and live security audit logs.
 
-First, run the development server:
+---
 
+## ⚡ Tech Stack
+
+*   **Framework:** Next.js 16 (App Router, React 19)
+*   **Styling & UI:** Tailwind CSS v4 (Custom Brutalist Theme)
+*   **Animations:** Motion (Framer Motion v12) & custom CSS Micro-animations
+*   **Code Workspace:** Monaco Editor (`@monaco-editor/react`) with live tab renaming
+*   **Visual Analytics:** Recharts (Custom Security Pulse radial charts and compatibility metrics)
+*   **Authentication:** Clerk Next.js SDK (`@clerk/nextjs`)
+*   **State & API Fetching:** TanStack React Query (v5) & Axios
+
+---
+
+## 🚀 Prerequisites
+
+Make sure you have the following installed locally:
+*   [Node.js](https://nodejs.org/) (v20+ recommended)
+*   [npm](https://www.npmjs.com/) (bundled with Node.js)
+*   A running **Sentinel OS Backend** (running on `http://localhost:5000`)
+
+---
+
+## 🛠️ Step-by-Step Setup
+
+### 1. Install Dependencies
+Navigate to the `frontend` directory and install the package dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Environment Variables Configuration
+Create a `.env.local` file in the root of your `frontend` directory:
+```env
+# Clerk Authentication Keys (Must match Backend)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# Backend Connection Endpoint
+NEXT_PUBLIC_BACKEND_URL=http://localhost:5000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Start the Development Server
+Launch the local Next.js development server:
+```bash
+npm run dev
+```
 
-## Learn More
+### 4. Access the Application
+Open [http://localhost:3000](http://localhost:3000) in your web browser. You'll be presented with the Sentinel OS main screen, where you can log in, open the Solidity editor workspace, and start auditing smart contracts.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📂 Frontend Architecture & Modules
+```bash
+frontend/
+├── src/
+│   ├── app/                    # Next.js App Router Pages
+│   │   ├── dashboard/          # Auditing & Analytics Dashboard
+│   │   │   ├── history/        # Previous audit scans history
+│   │   │   └── page.tsx        # Main Solidity Editor & Pulse Gauge workspace
+│   │   ├── layout.tsx          # Root theme provider & layouts
+│   │   └── page.tsx            # Branded Brutalist landing page
+│   ├── components/             # Reusable UI Components
+│   │   ├── security-pulse-chart.tsx # Radial & Line charts for security health
+│   │   └── animate-ui/         # Customized micro-animated components (tabs, tooltips)
+│   ├── lib/                    # Global utility files
+│   │   └── utils.ts            # Classnames merger helper (clsx + tailwind-merge)
+│   └── styles/                 # Tailwind CSS directives & global animations
+├── public/                     # Static media files and loaders
+├── tailwind.config.js          # Extended brutalist design system token configurations
+└── package.json                # Frontend package configurations & scripts
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🎨 Design System & Aesthetics
+Sentinel OS uses a curated, premium **Cyber-Industrial Brutalist Theme**:
+*   **Palette:** Deep terminal grays (`#0d0e12`), high-contrast electric warning colors (Mantle Green, Amber Warning, Critical Crimson), and glassmorphism panel backdrops.
+*   **Typography:** Strict geometric fonts (Inter, Outfit) to match real-time industrial terminal interfaces.
+*   **Interactivity:** Smooth micro-animations for tabs, active state glow indices, hover state transformations, and seamless transitions to convey high-fidelity data reporting.

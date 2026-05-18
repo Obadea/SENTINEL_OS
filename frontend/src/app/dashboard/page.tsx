@@ -17,16 +17,21 @@ import {
   IconExternalLink,
   IconUpload,
   IconDownload,
-  IconLoader2
+  IconLoader2,
+  IconX
 } from "@tabler/icons-react";
 import { SecurityPulseChart } from "@/components/security-pulse-chart";
 import { Tabs, TabsList, TabsTrigger, TabsContent, TabsContents } from "@/components/animate-ui/components/animate/tabs";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/animate-ui/components/animate/tooltip";
-
 export default function DashboardPage() {
   const {
+    tabs,
+    activeTabId,
+    setActiveTabId,
+    addTab,
+    removeTab,
     code,
     setCode,
     fileName,
@@ -123,6 +128,11 @@ export default function DashboardPage() {
     }
   }, [scanStatus]);
 
+  // Auto-switch bottom tab to terminal when changing active workspace tab
+  useEffect(() => {
+    setActiveTab("terminal");
+  }, [activeTabId]);
+
   const handleFileRead = (file: File) => {
     if (!file.name.endsWith(".sol")) {
       addLog(`ERROR: Unsupported file type: ${file.name}. Only .sol files are allowed.`);
@@ -131,9 +141,7 @@ export default function DashboardPage() {
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
-      setCode(content);
-      setFileName(file.name);
-      addLog(`SUCCESS: Loaded file: ${file.name}`);
+      addTab(file.name, content);
     };
     reader.readAsText(file);
   };
@@ -178,52 +186,153 @@ export default function DashboardPage() {
         {/* Left: Editor Container */}
         <div className="flex-1 flex flex-col min-w-0 min-h-0 border-r border-wireframe">
           {/* Workspace Header / Tabs */}
-          <div className="flex items-center justify-between border-b border-wireframe bg-[#0a0a0a]">
-            <div className="flex items-center">
-              <div className="flex items-center gap-3 border-r border-wireframe px-4 py-2 bg-[#050505] border-t-2 border-t-neon-green">
-                <IconFileCode className="w-4 h-4 text-neon-green" />
-                {isEditingName ? (
-                  <input
-                    type="text"
-                    value={fileName}
-                    onChange={(e) => setFileName(e.target.value)}
-                    onBlur={() => setIsEditingName(false)}
-                    onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)}
-                    autoFocus
-                    className="bg-transparent border-none outline-none text-sm font-mono text-on-surface w-32 focus:ring-0 p-0"
-                  />
-                ) : (
-                  <span
-                    onDoubleClick={() => setIsEditingName(true)}
-                    className="text-sm font-mono text-on-surface cursor-text"
-                  >
-                    {fileName}
-                  </span>
-                )}
-                <span className="ml-2 text-[9px] px-1.5 py-0.5 border border-neon-violet text-neon-violet bg-neon-violet/10 font-bold uppercase tracking-widest rounded-none">
-                  {scanStatus === "IDLE" ? "Draft" : "Audited"}
-                </span>
-              </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button 
-                      onClick={() => setIsEditingName(true)}
-                      className="p-3 text-on-surface-variant hover:text-neon-green hover:bg-neon-green/5 transition-colors border-r border-wireframe group"
-                    >
-                      <IconPlus className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-[#050505] border border-wireframe text-on-surface shadow-[0_0_10px_rgba(200,255,0,0.05)] rounded-none">
-                    <span className="font-mono text-[9px] uppercase tracking-wider text-neon-green">New File</span>
-                  </TooltipContent>
-                </Tooltip>
+          <div className="flex items-center justify-between border-b border-wireframe bg-[#0a0a0a] min-w-0">
+            <div className="flex items-center min-w-0 overflow-x-auto scrollbar-none flex-1">
+              <TooltipProvider >
+                {tabs.map((tab) => {
+                  const isActive = tab.id === activeTabId;
+                  const isTabScanning = tab.scanStatus === "SCANNING";
+                  const isTabComplete = tab.scanStatus === "COMPLETE";
+                  const isTabFailed = tab.scanStatus === "FAILED";
 
+                  return (
+                    <div
+                      key={tab.id}
+                      onClick={() => {
+                        if (!isActive) {
+                          setActiveTabId(tab.id);
+                          setIsEditingName(false); // Reset name editing when switching
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-2 font-mono text-xs cursor-pointer select-none transition-all border-r border-wireframe h-10 border-t-2 shrink-0 group relative",
+                        isActive
+                          ? "bg-[#050505] border-t-neon-green text-on-surface"
+                          : "bg-[#0a0a0a] border-t-transparent text-on-surface-variant hover:text-on-surface hover:bg-[#070707]"
+                      )}
+                    >
+                      {isTabScanning ? (
+                        <IconLoader2 className="w-3.5 h-3.5 text-neon-cyan animate-spin shrink-0" />
+                      ) : (
+                        <IconFileCode className={cn(
+                          "w-3.5 h-3.5 shrink-0",
+                          isActive ? "text-neon-green" : "text-on-surface-variant group-hover:text-neon-green"
+                        )} />
+                      )}
+
+                      {/* Rename active file on double click */}
+                      {isActive && isEditingName ? (
+                        <input
+                          type="text"
+                          value={fileName}
+                          onChange={(e) => setFileName(e.target.value)}
+                          onBlur={() => setIsEditingName(false)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') setIsEditingName(false);
+                            if (e.key === 'Escape') setIsEditingName(false);
+                          }}
+                          autoFocus
+                          onClick={(e) => e.stopPropagation()}
+                          className="bg-transparent border-none outline-none text-xs font-mono text-on-surface w-32 focus:ring-0 p-0"
+                        />
+                      ) : (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span
+                              onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                setIsEditingName(true);
+                              }}
+                              className="text-xs font-mono truncate max-w-[120px] cursor-text"
+                            >
+                              {tab.fileName}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-[#050505] border border-wireframe text-on-surface shadow-[0_0_10px_rgba(200,255,0,0.05)] rounded-none">
+                            <span className="font-mono text-[9px] uppercase tracking-wider text-neon-green">
+                              Double-click to rename
+                            </span>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+
+                      {/* Status Pill Dot */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className={cn(
+                            "w-1.5 h-1.5 rounded-full shrink-0 cursor-help",
+                            isTabScanning ? "bg-neon-cyan animate-pulse" :
+                              isTabComplete ? "bg-neon-green" :
+                                isTabFailed ? "bg-[#ff4d4d]" :
+                                  "bg-white/10"
+                          )} />
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-[#050505] border border-wireframe text-on-surface shadow-[0_0_10px_rgba(200,255,0,0.05)] rounded-none">
+                          <span className={cn(
+                            "font-mono text-[9px] uppercase tracking-wider",
+                            isTabScanning ? "text-neon-cyan" :
+                              isTabComplete ? "text-neon-green" :
+                                isTabFailed ? "text-[#ff4d4d]" :
+                                  "text-on-surface-variant opacity-60"
+                          )}>
+                            {isTabScanning ? "Scan in progress" :
+                              isTabComplete ? "Scan complete (Audited)" :
+                                isTabFailed ? "Scan failed" :
+                                  "Draft (Waiting to scan)"}
+                          </span>
+                        </TooltipContent>
+                      </Tooltip>
+
+                      {/* Close Tab Button */}
+                      {tabs.length > 1 && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeTab(tab.id);
+                              }}
+                              className="p-0.5 text-on-surface-variant hover:text-[#ff4d4d] hover:bg-white/5 transition-colors ml-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                            >
+                              <IconX className="w-3 h-3" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-[#050505] border border-wireframe text-on-surface shadow-[0_0_10px_rgba(255,77,77,0.05)] rounded-none">
+                            <span className="font-mono text-[9px] uppercase tracking-wider text-[#ff4d4d]">
+                              Close Tab
+                            </span>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Add New Tab Button (Limit 3) */}
+                {tabs.length < 3 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => addTab()}
+                        className="p-3 text-on-surface-variant hover:text-neon-green hover:bg-neon-green/5 transition-colors border-r border-wireframe group h-10 flex items-center justify-center shrink-0"
+                      >
+                        <IconPlus className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-[#050505] border border-wireframe text-on-surface shadow-[0_0_10px_rgba(200,255,0,0.05)] rounded-none">
+                      <span className="font-mono text-[9px] uppercase tracking-wider text-neon-green">
+                        New Contract ({tabs.length}/3)
+                      </span>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {/* Upload file on current tab */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button 
+                    <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="p-3 text-on-surface-variant hover:text-neon-cyan hover:bg-neon-cyan/5 transition-colors border-r border-wireframe group"
+                      className="p-3 text-on-surface-variant hover:text-neon-cyan hover:bg-neon-cyan/5 transition-colors border-r border-wireframe group h-10 flex items-center justify-center shrink-0"
                     >
                       <IconUpload className="w-4 h-4 group-hover:scale-110 transition-transform" />
                     </button>
@@ -233,11 +342,12 @@ export default function DashboardPage() {
                   </TooltipContent>
                 </Tooltip>
 
+                {/* Import verified contract address on current tab */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button 
+                    <button
                       onClick={() => setIsImportModalOpen(true)}
-                      className="p-3 text-on-surface-variant hover:text-neon-green hover:bg-neon-green/5 transition-colors border-r border-wireframe group"
+                      className="p-3 text-on-surface-variant hover:text-neon-green hover:bg-neon-green/5 transition-colors border-r border-wireframe group h-10 flex items-center justify-center shrink-0"
                     >
                       <IconDownload className="w-4 h-4 group-hover:scale-110 transition-transform" />
                     </button>
@@ -257,17 +367,25 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-2 text-on-surface-variant px-2">
-              <button className="p-2 hover:text-neon-cyan transition-colors" title="Save">
-                <IconDeviceFloppy className="w-4 h-4" />
-              </button>
-              <button className="p-2 hover:text-neon-cyan transition-colors" title="Copy code" onClick={() => navigator.clipboard.writeText(code)}>
-                <IconCopy className="w-4 h-4" />
-              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="p-2 hover:text-neon-cyan transition-colors" onClick={() => navigator.clipboard.writeText(code)}>
+                      <IconCopy className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-[#050505] border border-wireframe text-on-surface shadow-[0_0_10px_rgba(0,255,255,0.05)] rounded-none">
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-neon-cyan">
+                      Copy Code
+                    </span>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
 
           {/* Editor Content */}
-          <div 
+          <div
             className="flex-1 w-full relative overflow-hidden"
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
@@ -537,7 +655,7 @@ export default function DashboardPage() {
       {isImportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-[#0a0a0a] border-2 border-wireframe p-6 relative rounded-none flex flex-col gap-6 shadow-[0_0_30px_rgba(200,255,0,0.1)]">
-            
+
             {/* Corner Tech Accents */}
             <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-neon-green" />
             <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-neon-green" />
@@ -551,7 +669,7 @@ export default function DashboardPage() {
                   Import Contract
                 </h3>
               </div>
-              <button 
+              <button
                 onClick={closeImportModal}
                 className="text-on-surface-variant hover:text-neon-green transition-colors font-mono text-xs uppercase"
               >
@@ -575,8 +693,8 @@ export default function DashboardPage() {
                     onClick={() => setImportNetwork("mainnet")}
                     className={cn(
                       "py-2 border font-mono text-xs uppercase tracking-wider transition-all",
-                      importNetwork === "mainnet" 
-                        ? "border-neon-green text-neon-green bg-neon-green/5" 
+                      importNetwork === "mainnet"
+                        ? "border-neon-green text-neon-green bg-neon-green/5"
                         : "border-wireframe text-on-surface-variant hover:border-white/20"
                     )}
                   >
@@ -587,8 +705,8 @@ export default function DashboardPage() {
                     onClick={() => setImportNetwork("testnet")}
                     className={cn(
                       "py-2 border font-mono text-xs uppercase tracking-wider transition-all",
-                      importNetwork === "testnet" 
-                        ? "border-neon-green text-neon-green bg-neon-green/5" 
+                      importNetwork === "testnet"
+                        ? "border-neon-green text-neon-green bg-neon-green/5"
                         : "border-wireframe text-on-surface-variant hover:border-white/20"
                     )}
                   >
