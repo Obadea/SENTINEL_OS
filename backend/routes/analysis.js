@@ -45,95 +45,89 @@ router.get("/latest", requireAuth(), async (req, res) => {
 
 // Helper to parse Etherscan/Blockscout SourceCode (handles Standard JSON inputs)
 function parseSourceCode(rawSource, contractName) {
-  // Format 2: double-wrapped JSON (most common for verified contracts)
-  if (rawSource.startsWith('{{')) {
-    try {
-      const json = JSON.parse(rawSource.slice(1, -1)) // strip outer { }
-      return Object.entries(json.sources).map(([filename, { content }]) => ({
-        name: filename.split('/').pop(), // just the filename, not full path
-        content
-      }))
-    } catch {}
-  }
+    // Format 2: double-wrapped JSON (most common for verified contracts)
+    if (rawSource.startsWith('{{')) {
+        try {
+            const json = JSON.parse(rawSource.slice(1, -1)) // strip outer { }
+            return Object.entries(json.sources).map(([filename, { content }]) => ({
+                name: filename.split('/').pop(), // just the filename, not full path
+                content
+            }))
+        } catch { }
+    }
 
-  // Format 3: standard JSON
-  if (rawSource.startsWith('{')) {
-    try {
-      const json = JSON.parse(rawSource)
-      if (json.sources) {
-        return Object.entries(json.sources).map(([filename, { content }]) => ({
-          name: filename.split('/').pop(),
-          content
-        }))
-      }
-    } catch {}
-  }
+    // Format 3: standard JSON
+    if (rawSource.startsWith('{')) {
+        try {
+            const json = JSON.parse(rawSource)
+            if (json.sources) {
+                return Object.entries(json.sources).map(([filename, { content }]) => ({
+                    name: filename.split('/').pop(),
+                    content
+                }))
+            }
+        } catch { }
+    }
 
-  // Format 1: plain Solidity string — wrap it as a single file
-  return [{ name: `${contractName}.sol`, content: rawSource }]
+    // Format 1: plain Solidity string — wrap it as a single file
+    return [{ name: `${contractName}.sol`, content: rawSource }]
 }
 
 // 1.5 GET /api/analysis/import-contract
 router.get("/import-contract", requireAuth(), async (req, res) => {
-  try {
-    const { address, network = 'mainnet' } = req.query
+    try {
+        const { address, network = 'mainnet' } = req.query
 
-    if (!address) {
-      return res.status(400).json({ error: "Contract address is required" })
+        if (!address) {
+            return res.status(400).json({ error: "Contract address is required" })
+        }
+
+        const addressRegex = /^0x[a-fA-F0-9]{40}$/
+        if (!addressRegex.test(address)) {
+            return res.status(400).json({ error: "Invalid contract address format" })
+        }
+
+        // Mantle chainids on Etherscan V2
+        const chainId = network === 'testnet' ? '5003' : '5000'
+
+        const url = `https://api.etherscan.io/v2/api?chainid=${chainId}&module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
+
+        const response = await fetch(url)
+        if (!response.ok) {
+            throw new Error(`Etherscan API returned status ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        if (data.status !== "1" || !data.result?.length) {
+            const raw = data.result || data.message || "Failed to fetch source code"
+            const errorMsg = typeof raw === 'string' && raw.includes("not verified")
+                ? "Contract is not verified. Only verified contracts can be imported."
+                : raw
+            return res.status(400).json({ error: errorMsg })
+        }
+
+        const contractInfo = data.result[0]
+        const {
+            SourceCode: rawSourceCode,
+            ContractName: contractName = "ImportedContract",
+            CompilerVersion: compilerVersion,
+            OptimizationUsed: optimizationUsed,
+            Runs: runs
+        } = contractInfo
+
+        if (!rawSourceCode) {
+            return res.status(400).json({ error: "Source code is empty or missing." })
+        }
+
+        const files = parseSourceCode(rawSourceCode, contractName)
+
+        res.json({ success: true, contractName, files, compilerVersion, optimizationUsed, runs })
+
+    } catch (error) {
+        console.error("Import contract error:", error)
+        res.status(500).json({ error: "Failed to import contract. Please try again." })
     }
-
-    const addressRegex = /^0x[a-fA-F0-9]{40}$/
-    if (!addressRegex.test(address)) {
-      return res.status(400).json({ error: "Invalid contract address format" })
-    }
-
-    // Mantle chainids on Etherscan V2
-    const chainId = network === 'testnet' ? '5003' : '5000'
-
-    const url = `https://api.etherscan.io/v2/api?chainid=${chainId}&module=contract&action=getsourcecode&address=${address}&apikey=${process.env.ETHERSCAN_API_KEY}`
-
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`Etherscan API returned status ${response.status}`)
-    }
-
-    const data = await response.json()
-
-    if (data.status !== "1" || !data.result?.length) {
-      const raw = data.result || data.message || "Failed to fetch source code"
-      const errorMsg = typeof raw === 'string' && raw.includes("not verified")
-        ? "Contract is not verified. Only verified contracts can be imported."
-        : raw
-      return res.status(400).json({ error: errorMsg })
-    }
-
-    const contractInfo = data.result[0]
-    const {
-      SourceCode: rawSourceCode,
-      ContractName: contractName = "ImportedContract",
-      CompilerVersion: compilerVersion,
-      OptimizationUsed: optimizationUsed,
-      Runs: runs
-    } = contractInfo
-
-    if (!rawSourceCode) {
-      return res.status(400).json({ error: "Source code is empty or missing." })
-    }
-
-    const files = parseSourceCode(rawSourceCode, contractName)
-
-    res.json({ success: true, contractName, files, compilerVersion, optimizationUsed, runs })
-
-  } catch (error) {
-    console.error("Import contract error:", error)
-    res.status(500).json({ error: "Failed to import contract. Please try again." })
-  }
-});
-
-// 2. POST /api/analysis/create
-router.get("/create", requireAuth(), async (req, res) => {
-    // Note: User requested POST but provided example shows analysis logic.
-    // I'll implement it as POST as per standard, but user request had a slight mixup.
 });
 
 router.post("/create", requireAuth(), async (req, res) => {
@@ -148,6 +142,24 @@ router.post("/create", requireAuth(), async (req, res) => {
 
         // Call AI for analysis
         const aiResult = await callAiAnalysis(mainFile.content);
+
+        // Fallback if AI returns incomplete optimizedCode
+        const originalLines = mainFile.content.split('\n').length;
+        const optimizedLines = aiResult.optimizedCode?.split('\n').length || 0;
+
+        if (optimizedLines < originalLines * 0.4) {
+            aiResult.optimizedCode = mainFile.content;
+            aiResult.changedLines = { removed: [], added: [] };
+            aiResult.optimizationInsights = [
+                "Contract too large for full rewrite. Security vulnerabilities and gas recommendations are listed below."
+            ];
+        }
+
+        // Clean up gas projection to guarantee integer values (avoiding string inputs)
+        if (aiResult.gasProjection) {
+            aiResult.gasProjection.before = parseInt(aiResult.gasProjection.before) || 0;
+            aiResult.gasProjection.after = parseInt(aiResult.gasProjection.after) || 0;
+        }
 
         // Estimate Gas
         const gasProjection = await estimateGas(aiResult.optimizedCode || mainFile.content);
@@ -164,8 +176,9 @@ router.post("/create", requireAuth(), async (req, res) => {
             data: {
                 userId: user.id,
                 filename: mainFile.name,
-                originalCode: aiResult.originalCode || mainFile.content,
+                originalCode: mainFile.content,
                 optimizedCode: aiResult.optimizedCode,
+                changedLines: aiResult.changedLines || { removed: [], added: [] },
                 securityScore: aiResult.securityScore,
                 severityTag: severityTag,
                 vulnerabilities: aiResult.vulnerabilities,
@@ -237,7 +250,28 @@ router.get("/history", requireAuth(), async (req, res) => {
     }
 });
 
-// 4. GET /api/analysis/:id
+
+// 4. GET /api/analysis/public/:id (Public, no auth required)
+router.get("/public/:id", async (req, res) => {
+    try {
+        const analysis = await prisma.analysis.findUnique({
+            where: {
+                id: req.params.id
+            }
+        });
+
+        if (!analysis) {
+            return res.status(404).json({ error: "Analysis not found" });
+        }
+
+        res.json(analysis);
+    } catch (error) {
+        console.error("Public analysis fetch error:", error);
+        res.status(500).json({ error: "Failed to fetch analysis" });
+    }
+});
+
+// 5. GET /api/analysis/:id
 router.get("/:id", requireAuth(), async (req, res) => {
     try {
         const user = await getOrCreateUser(req.auth().userId);

@@ -38,6 +38,8 @@ import api, { setAuthToken } from "@/lib/api"
 import { useAuth } from "@clerk/nextjs"
 import { DotmSquare14 } from "@/components/ui/dotm-square-14"
 import Link from "next/link"
+import { sileo } from "sileo"
+import { IconShare } from "@tabler/icons-react"
 
 const RISK_CONFIG = {
     CRITICAL_PASS: {
@@ -94,6 +96,18 @@ export default function HistoryPage() {
             return response.data
         }
     })
+
+    const truncateName = (name: string, maxLen = 20) => {
+        if (!name) return "";
+        if (name.length <= maxLen) return name;
+        const dotIndex = name.lastIndexOf(".");
+        if (dotIndex !== -1 && name.length - dotIndex <= 5) {
+            const ext = name.substring(dotIndex);
+            const base = name.substring(0, dotIndex);
+            return base.slice(0, maxLen - ext.length - 3) + "..." + ext;
+        }
+        return name.slice(0, maxLen - 3) + "...";
+    }
 
     const auditHistory = data?.records || []
     const totalRecords = data?.total || 0
@@ -244,19 +258,20 @@ export default function HistoryPage() {
                                                 config.barColor
                                             )} />
                                             <div className="flex flex-col gap-0.5">
-                                                <span className="text-sm font-bold text-on-surface tracking-tight">
-                                                    {row.filename}
+                                                <span title={row.filename} className="text-sm font-bold text-on-surface tracking-tight">
+                                                    {truncateName(row.filename, 22)}
                                                 </span>
                                                 {row.address ? (
-                                                    <a 
-                                                        href={`https://mantlescan.xyz/address/${row.address}#code`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-[10px] text-neon-cyan hover:text-neon-cyan/80 hover:underline font-mono transition-all w-fit"
-                                                    >
-                                                        {row.address}
-                                                    </a>
-                                                ) : (
+                                                     <a 
+                                                         href={`https://mantlescan.xyz/address/${row.address}#code`}
+                                                         target="_blank"
+                                                         rel="noopener noreferrer"
+                                                         title={row.address}
+                                                         className="text-[10px] text-neon-cyan hover:text-neon-cyan/80 hover:underline font-mono transition-all w-fit cursor-help"
+                                                     >
+                                                         {row.address.slice(0, 6)}...{row.address.slice(-4)}
+                                                     </a>
+                                                 ) : (
                                                     <Link 
                                                         href={`/dashboard/optimizations/${row.id}`}
                                                         className="text-[10px] text-neon-violet hover:text-neon-violet/80 hover:underline font-mono font-bold uppercase tracking-wider transition-all w-fit"
@@ -321,6 +336,22 @@ export default function HistoryPage() {
                                                         View Optimization
                                                     </RippleButton>
                                                 </Link>
+                                                <RippleButton
+                                                    onClick={async () => {
+                                                        const shareUrl = `${window.location.origin}/report/${row.id}`;
+                                                        try {
+                                                            await navigator.clipboard.writeText(shareUrl);
+                                                            sileo.success({ title: "Report Shared", description: "Public audit report URL copied to clipboard!" });
+                                                        } catch (err) {
+                                                            console.error(err);
+                                                            sileo.error({ title: "Share Failed", description: "Failed to copy report URL." });
+                                                        }
+                                                    }}
+                                                    className="h-7 px-3 text-[9px] uppercase tracking-widest font-bold border border-neon-cyan/45 text-neon-cyan hover:text-black hover:bg-neon-cyan rounded-none transition-colors gap-1.5 flex items-center"
+                                                >
+                                                    <IconShare size={10} />
+                                                    <span>Share</span>
+                                                </RippleButton>
                                             </div>
                                         </TableCell>
                                     </TableRow>

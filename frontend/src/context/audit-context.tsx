@@ -186,9 +186,12 @@ export function AuditProvider({ children }: { children: React.ReactNode }) {
                 ...t,
                 scanStatus: "FAILED",
                 scanProgress: 100,
-                terminalLogs: [...t.terminalLogs, "ERROR: Analysis engine failed to process request."]
+                terminalLogs: [...t.terminalLogs, "ERROR: The AI is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."]
             } : t))
-            sileo.error({ title: "Analysis Failed", description: `Scan for ${variables.fileName} failed.` })
+            sileo.error({ 
+                title: "Analysis Failed", 
+                description: "The AI is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later." 
+            })
         }
     })
 

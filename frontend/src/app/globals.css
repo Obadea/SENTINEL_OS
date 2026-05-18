@@ -203,3 +203,26 @@ body {
   background-color: #a1d800 !important;
   color: #000000 !important;
 }
+
+/* Monaco Code Editor Diff Highlighting */
+.diff-removed-line {
+  background-color: rgba(255, 80, 80, 0.12) !important;
+  border-left: 2px solid #ff5050 !important;
+}
+.diff-removed-glyph::before {
+  content: '−' !important;
+  color: #ff5050 !important;
+  font-weight: bold !important;
+  font-size: 12px !important;
+}
+
+.diff-added-line {
+  background-color: rgba(161, 216, 0, 0.08) !important;
+  border-left: 2px solid #a1d800 !important;
+}
+.diff-added-glyph::before {
+  content: '+' !important;
+  color: #a1d800 !important;
+  font-weight: bold !important;
+  font-size: 12px !important;
+}

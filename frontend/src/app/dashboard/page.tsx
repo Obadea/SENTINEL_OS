@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAudit } from "@/context/audit-context";
 import { SolidityEditor } from "@/components/solidity-editor";
+import { sileo } from "sileo";
 import {
   IconFileCode,
   IconPlus,
@@ -18,7 +19,8 @@ import {
   IconUpload,
   IconDownload,
   IconLoader2,
-  IconX
+  IconX,
+  IconShare
 } from "@tabler/icons-react";
 import { SecurityPulseChart } from "@/components/security-pulse-chart";
 import { Tabs, TabsList, TabsTrigger, TabsContent, TabsContents } from "@/components/animate-ui/components/animate/tabs";

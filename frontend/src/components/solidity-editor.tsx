@@ -1,9 +1,23 @@
 "use client"
 
-import Editor, { useMonaco } from '@monaco-editor/react'
+import { useRef, useEffect } from 'react'
+import Editor from '@monaco-editor/react'
 import { DotmSquare14 } from "@/components/ui/dotm-square-14"
 
-export function SolidityEditor({ value, onChange }: { value: string, onChange?: (val: string | undefined) => void }) {
+export function SolidityEditor({ 
+  value, 
+  onChange, 
+  readOnly = false,
+  highlightLines
+}: { 
+  value: string, 
+  onChange?: (val: string | undefined) => void, 
+  readOnly?: boolean,
+  highlightLines?: { removed?: number[]; added?: number[] }
+}) {
+  const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
+  const decorationsRef = useRef<string[]>([]);
 
   function handleBeforeMount(monaco: any) {
     // Register Solidity as a language
@@ -70,6 +84,54 @@ export function SolidityEditor({ value, onChange }: { value: string, onChange?: 
     })
   }
 
+  function handleMount(editor: any, monaco: any) {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+  }
+
+  useEffect(() => {
+    if (!editorRef.current || !monacoRef.current) return;
+
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    const newDecorations: any[] = [];
+
+    if (highlightLines?.removed) {
+      highlightLines.removed.forEach((lineNum) => {
+        if (lineNum > 0) {
+          newDecorations.push({
+            range: new monaco.Range(lineNum, 1, lineNum, 1),
+            options: {
+              isWholeLine: true,
+              className: 'diff-removed-line',
+              glyphMarginClassName: 'diff-removed-glyph'
+            }
+          });
+        }
+      });
+    }
+
+    if (highlightLines?.added) {
+      highlightLines.added.forEach((lineNum) => {
+        if (lineNum > 0) {
+          newDecorations.push({
+            range: new monaco.Range(lineNum, 1, lineNum, 1),
+            options: {
+              isWholeLine: true,
+              className: 'diff-added-line',
+              glyphMarginClassName: 'diff-added-glyph'
+            }
+          });
+        }
+      });
+    }
+
+    decorationsRef.current = editor.deltaDecorations(
+      decorationsRef.current,
+      newDecorations
+    );
+  }, [highlightLines, value]);
+
   return (
     <Editor
       height="100%"
@@ -78,6 +140,7 @@ export function SolidityEditor({ value, onChange }: { value: string, onChange?: 
       value={value}
       onChange={onChange}
       beforeMount={handleBeforeMount}
+      onMount={handleMount}
       loading={
         <div className="flex h-full w-full items-center justify-center bg-[#050505]">
           <DotmSquare14
@@ -96,7 +159,8 @@ export function SolidityEditor({ value, onChange }: { value: string, onChange?: 
         lineNumbers: 'on',
         glyphMargin: true,   // needed for vulnerability markers in gutter
         folding: true,
-        padding: { top: 16 }
+        padding: { top: 16 },
+        readOnly: readOnly
       }}
     />
   )

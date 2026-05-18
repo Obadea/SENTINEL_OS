@@ -60,6 +60,7 @@ model Analysis {
   mantleCompatibility   Json?
   summary               String?
   address               String?
+  changedLines          Json?
   createdAt             DateTime @default(now())
 
   @@index([userId])
