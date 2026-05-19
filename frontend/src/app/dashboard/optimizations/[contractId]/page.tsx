@@ -19,7 +19,7 @@ import {
     IconX,
     IconLoader2
 } from "@tabler/icons-react"
-import { ethers } from "ethers"
+import { BrowserProvider, ContractFactory } from "ethers"
 import Link from "next/link"
 import { RippleButton } from "@/components/ui/RippleButton"
 import { Badge } from "@/components/ui/badge"
@@ -72,6 +72,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
     const [selectedPreviewFileId, setSelectedPreviewFileId] = useState<string | null>(null)
     const [previewTab, setPreviewTab] = useState<"original" | "optimized">("optimized")
     const [understandRisks, setUnderstandRisks] = useState(false)
+    const [isMetaMaskAvailable, setIsMetaMaskAvailable] = useState(false)
 
     const { data: analysis, isLoading, error } = useQuery({
         queryKey: ["analysis", contractId],
@@ -94,6 +95,19 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
     })
 
 
+
+    // Check when modal opens
+    React.useEffect(() => {
+        if (!isDeployModalOpen) return;
+        
+        const checkMetaMask = async () => {
+            // Give MetaMask time to inject
+            await new Promise(resolve => setTimeout(resolve, 200));
+            setIsMetaMaskAvailable(typeof window !== "undefined" && !!(window as any).ethereum);
+        };
+        
+        checkMetaMask();
+    }, [isDeployModalOpen]);
 
     // Close modals on Escape key down (fully inclusive of new subdialogs)
     React.useEffect(() => {
@@ -236,22 +250,46 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
     };
 
     const handleConnectWallet = async () => {
-        if (!(window as any).ethereum) {
-            sileo.error({ title: "MetaMask Missing", description: "Please install MetaMask to deploy contracts." });
-            return;
+        // Wait for MetaMask to inject itself
+        // (it injects window.ethereum asynchronously after page load)
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        if (typeof window === "undefined") {
+            sileo.error({ title: "Browser Required", description: "Please open this page in a browser." })
+            return
         }
+
+        if (!(window as any).ethereum) {
+            sileo.error({ 
+                title: "MetaMask Not Found", 
+                description: "MetaMask extension is installed but not detected. Try refreshing the page." 
+            })
+            return
+        }
+
         try {
-            const provider = new ethers.BrowserProvider((window as any).ethereum);
-            const accounts = await provider.send("eth_requestAccounts", []);
-            setWalletAddress(accounts[0]);
-            sileo.success({ title: "Wallet Connected", description: `Connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}` });
+            const accounts = await (window as any).ethereum.request({ 
+                method: "eth_requestAccounts" 
+            })
+            setWalletAddress(accounts[0])
+            sileo.success({ 
+                title: "Wallet Connected", 
+                description: `Connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}` 
+            })
         } catch (err: any) {
-            sileo.error({ title: "Connection Failed", description: err.message || "Failed to connect wallet." });
+            if (err.code === 4001) {
+                // User rejected the connection request
+                sileo.error({ title: "Connection Rejected", description: "You rejected the MetaMask connection request." })
+            } else {
+                sileo.error({ title: "Connection Failed", description: err.message || "Failed to connect wallet." })
+            }
         }
     };
 
     const switchToMantleNetwork = async () => {
-        if (!(window as any).ethereum) return;
+        if (typeof window === "undefined" || !(window as any).ethereum) {
+            throw new Error("MetaMask not available")
+        }
 
         const chainIdHex = network === "testnet" ? "0x138B" : "0x1388"; // 5003 or 5000 in hex
         const chainName = network === "testnet" ? "Mantle Sepolia Testnet" : "Mantle Mainnet";
@@ -322,7 +360,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
             });
 
             // 3. Create Contract Factory and Deploy
-            const provider = new ethers.BrowserProvider((window as any).ethereum);
+            const provider = new BrowserProvider((window as any).ethereum);
             const signer = await provider.getSigner();
 
             // Clean Bytecode string (must start with 0x)
@@ -331,7 +369,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                 formattedBytecode = "0x" + formattedBytecode;
             }
 
-            const factory = new ethers.ContractFactory(abi, formattedBytecode, signer);
+            const factory = new ContractFactory(abi, formattedBytecode, signer);
             const contract = await factory.deploy(...orderedValues);
 
             const tx = contract.deploymentTransaction();
@@ -751,7 +789,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
 
             {/* 🚀 Mantle Deploy Modal */}
             {isDeployModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+                <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
                     <div className="w-full max-w-4xl border border-wireframe bg-[#050505] shadow-[0_0_60px_rgba(161,216,0,0.08)] relative grid grid-cols-1 md:grid-cols-2 rounded-none">
 
                         {/* Corner Tech Accents */}
@@ -1005,14 +1043,38 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                                         </span>
                                     </div>
                                 ) : (
-                                    <button
-                                        type="button"
-                                        onClick={handleConnectWallet}
-                                        className="w-full h-9 border border-neon-cyan text-neon-cyan bg-transparent hover:bg-neon-cyan/5 font-mono text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 rounded-none"
-                                    >
-                                        <IconWallet className="w-3.5 h-3.5" />
-                                        Connect MetaMask Wallet
-                                    </button>
+                                    <div className="flex flex-col gap-2">
+                                        {!isMetaMaskAvailable && (
+                                            <div className="text-[9px] font-mono text-amber-400 uppercase tracking-widest border border-amber-500/30 bg-amber-500/5 p-2 flex items-center gap-2">
+                                                <IconAlertTriangle className="w-3 h-3 shrink-0" />
+                                                MetaMask not detected. Install or refresh the page.
+                                            </div>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={handleConnectWallet}
+                                            disabled={!isMetaMaskAvailable}
+                                            className={cn(
+                                                "w-full h-9 border font-mono text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 rounded-none",
+                                                isMetaMaskAvailable 
+                                                    ? "border-neon-cyan text-neon-cyan bg-transparent hover:bg-neon-cyan/5"
+                                                    : "border-wireframe/30 text-on-surface-variant/40 cursor-not-allowed"
+                                            )}
+                                        >
+                                            <IconWallet className="w-3.5 h-3.5" />
+                                            {isMetaMaskAvailable ? "Connect MetaMask Wallet" : "MetaMask Not Detected"}
+                                        </button>
+                                        {!isMetaMaskAvailable && (
+                                            <a
+                                                href="https://metamask.io/download"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-[9px] font-mono text-neon-cyan hover:underline uppercase tracking-widest text-center"
+                                            >
+                                                Download MetaMask ↗
+                                            </a>
+                                        )}
+                                    </div>
                                 )}
 
                                 <div className="text-[9px] font-mono text-on-surface-variant/70 uppercase tracking-wide leading-relaxed">
@@ -1155,7 +1217,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
 
             {/* 📁 Add File Dialog */}
             {isAddFileDialogOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+                <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
                     <div className="w-full max-w-lg border border-wireframe bg-[#050505] p-8 shadow-[0_0_60px_rgba(161,216,0,0.08)] relative rounded-none flex flex-col max-h-[80vh]">
                         {/* Corner Accents */}
                         <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-neon-cyan" />
@@ -1252,7 +1314,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
 
             {/* 📝 View Code Preview Modal */}
             {isCodePreviewOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+                <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
                     <div className="w-full max-w-5xl h-[85vh] border border-wireframe bg-[#050505] p-8 shadow-[0_0_60px_rgba(0,229,255,0.08)] relative rounded-none flex flex-col">
                         {/* Corner Accents */}
                         <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-neon-cyan" />
