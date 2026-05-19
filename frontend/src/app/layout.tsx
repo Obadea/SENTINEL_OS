@@ -156,8 +156,9 @@ export default function RootLayout({
       <html
         lang="en"
         className={`${geistSans.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+        suppressHydrationWarning
       >
-        <body className="min-h-full flex flex-col bg-[#050505]">
+        <body className="min-h-full flex flex-col bg-[#050505]" suppressHydrationWarning>
           <ClerkLoading>
             <GlobalLoader fullScreen />
           </ClerkLoading>

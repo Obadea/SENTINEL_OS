@@ -3,6 +3,7 @@ import { requireAuth, clerkClient } from "@clerk/express";
 import prisma from "../prisma/client.js";
 import { callAiAnalysis } from "../utils/ai.js";
 import { estimateGas } from "../utils/gas.js";
+import { compileContract } from "../utils/compiler.js";
 
 const router = express.Router();
 
@@ -223,7 +224,9 @@ router.get("/history", requireAuth(), async (req, res) => {
                     severityTag: true,
                     gasSavedPercent: true,
                     vulnerabilities: true,
-                    address: true
+                    address: true,
+                    originalCode: true,
+                    optimizedCode: true
                 }
             })
         ]);
@@ -237,7 +240,9 @@ router.get("/history", requireAuth(), async (req, res) => {
             severityTag: r.severityTag,
             gasEfficiency: r.gasSavedPercent,
             vulnerabilityCount: Array.isArray(r.vulnerabilities) ? r.vulnerabilities.length : 0,
-            address: r.address
+            address: r.address,
+            originalCode: r.originalCode,
+            optimizedCode: r.optimizedCode
         }));
 
         res.json({
@@ -249,6 +254,73 @@ router.get("/history", requireAuth(), async (req, res) => {
         res.status(500).json({ error: "Failed to fetch history" });
     }
 });
+
+// 3.5 POST /api/analysis/compile
+router.post("/compile", requireAuth(), async (req, res) => {
+    try {
+        const { analysisId, useOptimized, extraFiles } = req.body;
+
+        console.log("\n🛰️  [SENTINEL COMPILE SERVICE] INCOMING COMPILATION TRIGGERED:");
+        console.log(`   🔸 Analysis ID : ${analysisId}`);
+        console.log(`   🔸 Select Type : ${useOptimized ? "OPTIMIZED (AI)" : "ORIGINAL CODE"}`);
+        console.log(`   🔸 Extra Files : ${extraFiles ? extraFiles.length : 0} dependency files`);
+        if (extraFiles && Array.isArray(extraFiles)) {
+            extraFiles.forEach((f, idx) => {
+                console.log(`      📁 [File #${idx + 1}] -> "${f.name}" (${f.content ? f.content.length : 0} chars)`);
+            });
+        }
+        console.log("=====================================================================\n");
+
+        if (!analysisId) {
+            return res.status(400).json({ error: "Analysis ID is required" });
+        }
+
+        const user = await getOrCreateUser(req.auth().userId);
+
+        const analysis = await prisma.analysis.findFirst({
+            where: {
+                id: analysisId,
+                userId: user.id
+            }
+        });
+
+        if (!analysis) {
+            return res.status(404).json({ error: "Analysis not found" });
+        }
+
+        const code = useOptimized ? analysis.optimizedCode : analysis.originalCode;
+        if (!code) {
+            return res.status(400).json({ error: "No Solidity code found in this analysis" });
+        }
+
+        // Clean filename for compilation (remove .sol extension)
+        const contractName = analysis.filename.replace(/\.sol$/i, "");
+
+        // Build standard files collection for the compiler, merging only extraFiles from request body
+        const filesInput = [{ name: analysis.filename, content: code }];
+        if (extraFiles && Array.isArray(extraFiles)) {
+            extraFiles.forEach(f => {
+                if (f.name && f.content && f.name !== analysis.filename) {
+                    filesInput.push({ name: f.name, content: f.content });
+                }
+            });
+        }
+
+        const result = compileContract(filesInput, contractName);
+
+        res.json({
+            success: true,
+            abi: result.abi,
+            bytecode: result.bytecode,
+            constructorArgs: result.abi.find((item) => item.type === "constructor")?.inputs || []
+        });
+
+    } catch (error) {
+        console.error("Compilation error:", error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
 
 
 // 4. GET /api/analysis/public/:id (Public, no auth required)
