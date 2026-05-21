@@ -24,6 +24,8 @@ import {
 } from "@tabler/icons-react";
 import { SecurityPulseChart } from "@/components/security-pulse-chart";
 import { Tabs, TabsList, TabsTrigger, TabsContent, TabsContents } from "@/components/animate-ui/components/animate/tabs";
+import { LiquidButton } from "@/components/animate-ui/components/buttons/liquid";
+import { SparklesIcon, type SparklesIconHandle } from "@/components/icons/sparkles";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/animate-ui/components/animate/tooltip";
@@ -47,6 +49,7 @@ export default function DashboardPage() {
     addLog
   } = useAudit();
 
+  const sparklesRef = useRef<SparklesIconHandle>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importAddress, setImportAddress] = useState("");
@@ -585,9 +588,24 @@ export default function DashboardPage() {
         {/* Right: Security Pulse Sidebar */}
         <div className="w-[340px] shrink-0 bg-[#050505] flex flex-col overflow-y-auto custom-scrollbar hidden lg:flex">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-wireframe h-[40.9px]">
+          <div className="flex items-center justify-between p-4 border-b border-wireframe min-h-[40.9px] gap-4">
             <h2 className="text-xs font-mono font-bold uppercase tracking-widest text-neon-green">Security Pulse</h2>
-            <IconTarget className="w-4 h-4 text-neon-green" />
+            <LiquidButton
+                variant="default"
+                size="sm"
+                disabled={scanStatus === "SCANNING"}
+                onClick={() => analyze()}
+                onMouseEnter={() => sparklesRef.current?.startAnimation()}
+                onMouseLeave={() => sparklesRef.current?.stopAnimation()}
+                className="font-mono uppercase text-[10px] tracking-widest rounded-none font-medium disabled:opacity-50 disabled:cursor-not-allowed h-6 px-3 whitespace-nowrap"
+            >
+                <SparklesIcon
+                    ref={sparklesRef}
+                    size={12}
+                    className="text-neon-green"
+                />
+                {scanStatus === "SCANNING" ? "Analyzing..." : "Analyze"}
+            </LiquidButton>
           </div>
 
           <div className="p-6 flex flex-col gap-8">

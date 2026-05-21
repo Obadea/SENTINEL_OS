@@ -42,6 +42,13 @@ import {
     TooltipTrigger,
     TooltipContent
 } from "@/components/animate-ui/primitives/animate/tooltip"
+import { useWallet } from "@/context/wallet-context"
+import {
+    PreviewLinkCard,
+    PreviewLinkCardTrigger,
+    PreviewLinkCardContent,
+    PreviewLinkCardImage
+} from '@/components/animate-ui/components/radix/preview-link-card'
 
 export default function OptimizationReportPage({ params }: { params: Promise<{ contractId: string }> }) {
     const { contractId } = use(params)
@@ -55,7 +62,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
     const [useOptimized, setUseOptimized] = useState(true)
     const [network, setNetwork] = useState<"testnet" | "mainnet">("testnet")
     const [constructorValues, setConstructorValues] = useState<Record<string, string>>({})
-    const [walletAddress, setWalletAddress] = useState<string | null>(null)
+    const { walletAddress, isMetaMaskAvailable, connectMetaMask } = useWallet()
     const [compiling, setCompiling] = useState(false)
     const [deploying, setDeploying] = useState(false)
     const [deploySteps, setDeploySteps] = useState<Array<{ label: string; status: "idle" | "loading" | "success" | "error"; details?: string }>>([])
@@ -72,9 +79,8 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
     const [selectedPreviewFileId, setSelectedPreviewFileId] = useState<string | null>(null)
     const [previewTab, setPreviewTab] = useState<"original" | "optimized">("optimized")
     const [understandRisks, setUnderstandRisks] = useState(false)
-    const [isMetaMaskAvailable, setIsMetaMaskAvailable] = useState(false)
 
-    const { data: analysis, isLoading, error } = useQuery({
+    const { data: analysis, isLoading, error, refetch } = useQuery({
         queryKey: ["analysis", contractId],
         queryFn: async () => {
             const token = await getToken()
@@ -95,19 +101,6 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
     })
 
 
-
-    // Check when modal opens
-    React.useEffect(() => {
-        if (!isDeployModalOpen) return;
-        
-        const checkMetaMask = async () => {
-            // Give MetaMask time to inject
-            await new Promise(resolve => setTimeout(resolve, 200));
-            setIsMetaMaskAvailable(typeof window !== "undefined" && !!(window as any).ethereum);
-        };
-        
-        checkMetaMask();
-    }, [isDeployModalOpen]);
 
     // Close modals on Escape key down (fully inclusive of new subdialogs)
     React.useEffect(() => {
@@ -250,40 +243,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
     };
 
     const handleConnectWallet = async () => {
-        // Wait for MetaMask to inject itself
-        // (it injects window.ethereum asynchronously after page load)
-        await new Promise(resolve => setTimeout(resolve, 100))
-
-        if (typeof window === "undefined") {
-            sileo.error({ title: "Browser Required", description: "Please open this page in a browser." })
-            return
-        }
-
-        if (!(window as any).ethereum) {
-            sileo.error({ 
-                title: "MetaMask Not Found", 
-                description: "MetaMask extension is installed but not detected. Try refreshing the page." 
-            })
-            return
-        }
-
-        try {
-            const accounts = await (window as any).ethereum.request({ 
-                method: "eth_requestAccounts" 
-            })
-            setWalletAddress(accounts[0])
-            sileo.success({ 
-                title: "Wallet Connected", 
-                description: `Connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}` 
-            })
-        } catch (err: any) {
-            if (err.code === 4001) {
-                // User rejected the connection request
-                sileo.error({ title: "Connection Rejected", description: "You rejected the MetaMask connection request." })
-            } else {
-                sileo.error({ title: "Connection Failed", description: err.message || "Failed to connect wallet." })
-            }
-        }
+        await connectMetaMask();
     };
 
     const switchToMantleNetwork = async () => {
@@ -388,6 +348,16 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
             await contract.waitForDeployment();
             const address = await contract.getAddress();
             setContractAddress(address);
+
+            // Update deployed address in database
+            try {
+                const token = await getToken();
+                setAuthToken(token);
+                await api.patch(`/analysis/${contractId}/address`, { address });
+                refetch();
+            } catch (dbErr) {
+                console.error("Failed to update contract address in database:", dbErr);
+            }
 
             setDeploySteps(prev => {
                 const next = [...prev];
@@ -1079,15 +1049,28 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
 
                                 <div className="text-[9px] font-mono text-on-surface-variant/70 uppercase tracking-wide leading-relaxed">
                                     Need testnet MNT?{" "}
-                                    <a
-                                        href="https://faucet.sepolia.mantle.xyz"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-neon-cyan hover:underline hover:text-neon-cyan/80 font-bold inline-flex items-center gap-0.5"
-                                    >
-                                        Mantle Testnet Faucet
-                                        <IconExternalLink className="w-2.5 h-2.5" />
-                                    </a>
+                                    <PreviewLinkCard href="https://faucet.sepolia.mantle.xyz" openDelay={50} closeDelay={100}>
+                                        <PreviewLinkCardTrigger
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-neon-cyan hover:underline hover:text-neon-cyan/80 font-bold inline-flex items-center gap-0.5 cursor-pointer"
+                                        >
+                                            Mantle Testnet Faucet
+                                            <IconExternalLink className="w-2.5 h-2.5" />
+                                        </PreviewLinkCardTrigger>
+                                        <PreviewLinkCardContent
+                                            className="bg-[#050505] border border-wireframe p-0 rounded-none shadow-[0_0_20px_rgba(0,229,255,0.15)] relative w-[240px] h-[135px] flex items-center justify-center overflow-hidden"
+                                            target="_blank"
+                                        >
+                                            {/* Corner Accents */}
+                                            <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-neon-cyan z-10" />
+                                            <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-neon-cyan z-10" />
+                                            <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-neon-cyan z-10" />
+                                            <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-neon-cyan z-10" />
+                                            
+                                            <PreviewLinkCardImage alt="Mantle Testnet Faucet" className="w-[240px] h-[135px] object-cover" />
+                                        </PreviewLinkCardContent>
+                                    </PreviewLinkCard>
                                 </div>
                             </div>
                         </div>
@@ -1151,64 +1134,92 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                                             <span className="text-[10px] font-mono text-on-surface truncate pr-4">
                                                 {txHash}
                                             </span>
-                                            <a
-                                                href={`${network === "testnet" ? "https://explorer.sepolia.mantle.xyz" : "https://explorer.mantle.xyz"}/tx/${txHash}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-[9px] font-mono text-neon-cyan hover:underline flex items-center gap-0.5 font-bold shrink-0"
-                                            >
-                                                View Tx
-                                                <IconExternalLink className="w-3 h-3" />
-                                            </a>
+                                            <PreviewLinkCard href={`${network === "testnet" ? "https://explorer.sepolia.mantle.xyz" : "https://explorer.mantle.xyz"}/tx/${txHash}`} openDelay={50} closeDelay={100}>
+                                                <PreviewLinkCardTrigger
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-[9px] font-mono text-neon-cyan hover:underline hover:text-neon-cyan/80 flex items-center gap-0.5 font-bold shrink-0 cursor-pointer"
+                                                >
+                                                    View Tx
+                                                    <IconExternalLink className="w-3 h-3" />
+                                                </PreviewLinkCardTrigger>
+                                                <PreviewLinkCardContent
+                                                    className="bg-[#050505] border border-wireframe p-0 rounded-none shadow-[0_0_20px_rgba(0,229,255,0.15)] relative w-[240px] h-[135px] flex items-center justify-center overflow-hidden"
+                                                    target="_blank"
+                                                >
+                                                    {/* Corner Accents */}
+                                                    <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-neon-cyan z-10" />
+                                                    <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-neon-cyan z-10" />
+                                                    <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-neon-cyan z-10" />
+                                                    <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-neon-cyan z-10" />
+                                                    
+                                                    <PreviewLinkCardImage alt="Transaction Explorer" className="w-[240px] h-[135px] object-cover" />
+                                                </PreviewLinkCardContent>
+                                            </PreviewLinkCard>
                                         </div>
                                     </div>
                                 )}
 
-                                {contractAddress && (
+                                {(contractAddress || analysis?.address) && (
                                     <div className="flex flex-col gap-1 border border-neon-green/30 bg-neon-green/5 p-3">
                                         <span className="text-[8px] font-mono uppercase tracking-[0.2em] text-neon-green font-bold">
                                             Contract Successfully Deployed!
                                         </span>
                                         <div className="flex items-center justify-between mt-1">
                                             <span className="text-[10px] font-mono text-on-surface truncate pr-4 font-bold">
-                                                {contractAddress}
+                                                {contractAddress || analysis?.address}
                                             </span>
-                                            <a
-                                                href={`${network === "testnet" ? "https://explorer.sepolia.mantle.xyz" : "https://explorer.mantle.xyz"}/address/${contractAddress}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-[9px] font-mono text-neon-green hover:underline flex items-center gap-0.5 font-bold shrink-0"
-                                            >
-                                                Explorer
-                                                <IconExternalLink className="w-3 h-3" />
-                                            </a>
+                                            <PreviewLinkCard href={`${network === "testnet" ? "https://explorer.sepolia.mantle.xyz" : "https://explorer.mantle.xyz"}/address/${contractAddress || analysis?.address}`} openDelay={50} closeDelay={100}>
+                                                <PreviewLinkCardTrigger
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-[9px] font-mono text-neon-green hover:underline hover:text-neon-green/80 flex items-center gap-0.5 font-bold shrink-0 cursor-pointer"
+                                                >
+                                                    Explorer
+                                                    <IconExternalLink className="w-3 h-3" />
+                                                </PreviewLinkCardTrigger>
+                                                <PreviewLinkCardContent
+                                                    className="bg-[#050505] border border-wireframe p-0 rounded-none shadow-[0_0_20px_rgba(161,216,0,0.15)] relative w-[240px] h-[135px] flex items-center justify-center overflow-hidden"
+                                                    target="_blank"
+                                                >
+                                                    {/* Corner Accents */}
+                                                    <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-neon-green z-10" />
+                                                    <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-neon-green z-10" />
+                                                    <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-neon-green z-10" />
+                                                    <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-neon-green z-10" />
+                                                    
+                                                    <PreviewLinkCardImage alt="Contract Explorer" className="w-[240px] h-[135px] object-cover" />
+                                                </PreviewLinkCardContent>
+                                            </PreviewLinkCard>
                                         </div>
                                     </div>
                                 )}
 
-                                <button
-                                    type="button"
-                                    disabled={
-                                        deploying ||
-                                        !walletAddress ||
-                                        compiling ||
-                                        (analysis.securityScore !== null && analysis.securityScore < 60 && !understandRisks)
-                                    }
-                                    onClick={handleDeploy}
-                                    className="w-full h-10 bg-neon-green text-on-primary font-heading font-black text-xs uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neon-green/90 shadow-[0_0_20px_rgba(161,216,0,0.15)] flex items-center justify-center gap-2 rounded-none"
-                                >
-                                    {deploying ? (
-                                        <>
-                                            <IconLoader2 className="w-4 h-4 animate-spin" />
-                                            Deploying Contract...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <IconRocket className="w-4 h-4" />
-                                            Confirm Deployment
-                                        </>
-                                    )}
-                                </button>
+                                {!contractAddress && !analysis?.address && (
+                                    <button
+                                        type="button"
+                                        disabled={
+                                            deploying ||
+                                            !walletAddress ||
+                                            compiling ||
+                                            (analysis?.securityScore !== null && analysis?.securityScore < 60 && !understandRisks)
+                                        }
+                                        onClick={handleDeploy}
+                                        className="w-full h-10 bg-neon-green text-on-primary font-heading font-black text-xs uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neon-green/90 shadow-[0_0_20px_rgba(161,216,0,0.15)] flex items-center justify-center gap-2 rounded-none"
+                                    >
+                                        {deploying ? (
+                                            <>
+                                                <IconLoader2 className="w-4 h-4 animate-spin" />
+                                                Deploying Contract...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <IconRocket className="w-4 h-4" />
+                                                Confirm Deployment
+                                            </>
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

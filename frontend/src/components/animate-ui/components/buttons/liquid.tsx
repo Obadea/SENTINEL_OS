@@ -42,18 +42,17 @@ const buttonVariants = cva(
 type LiquidButtonProps = LiquidButtonPrimitiveProps &
   VariantProps<typeof buttonVariants>;
 
-function LiquidButton({
-  className,
-  variant,
-  size,
-  ...props
-}: LiquidButtonProps) {
-  return (
-    <LiquidButtonPrimitive
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    />
-  );
-}
+const LiquidButton = React.forwardRef<HTMLButtonElement, LiquidButtonProps>(
+  ({ className, variant, size, ...props }, ref) => {
+    return (
+      <LiquidButtonPrimitive
+        ref={ref}
+        className={cn(buttonVariants({ variant, size, className }))}
+        {...props}
+      />
+    );
+  }
+);
+LiquidButton.displayName = 'LiquidButton';
 
 export { LiquidButton, buttonVariants, type LiquidButtonProps };

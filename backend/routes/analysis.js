@@ -365,4 +365,36 @@ router.get("/:id", requireAuth(), async (req, res) => {
     }
 });
 
+// 6. PATCH /api/analysis/:id/address
+router.patch("/:id/address", requireAuth(), async (req, res) => {
+    try {
+        const { address } = req.body;
+        if (!address) {
+            return res.status(400).json({ error: "Address is required" });
+        }
+
+        const user = await getOrCreateUser(req.auth().userId);
+        const analysis = await prisma.analysis.findFirst({
+            where: {
+                id: req.params.id,
+                userId: user.id
+            }
+        });
+
+        if (!analysis) {
+            return res.status(404).json({ error: "Analysis not found" });
+        }
+
+        const updated = await prisma.analysis.update({
+            where: { id: analysis.id },
+            data: { address }
+        });
+
+        res.json(updated);
+    } catch (error) {
+        console.error("Update address error:", error);
+        res.status(500).json({ error: "Failed to update contract address" });
+    }
+});
+
 export default router;
