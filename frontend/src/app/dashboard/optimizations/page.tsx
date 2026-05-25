@@ -38,6 +38,8 @@ import { DotmSquare14 } from "@/components/ui/dotm-square-14"
 import Link from "next/link"
 import { sileo } from "sileo"
 import { IconShare } from "@tabler/icons-react"
+import { getExplorerAddressUrl, getNetworkLabel } from "@/lib/mantle-explorer"
+import { CopyButton } from "@/components/animate-ui/components/buttons/copy"
 
 const RISK_CONFIG = {
     CRITICAL_PASS: {
@@ -259,17 +261,29 @@ export default function OptimizationsPage() {
                                                     {truncateName(row.filename, 22)}
                                                 </span>
                                                 {row.address ? (
-                                                    <a 
-                                                        href={`https://mantlescan.xyz/address/${row.address}#code`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        title={row.address}
-                                                        className="text-[10px] text-neon-cyan hover:text-neon-cyan/80 hover:underline font-mono transition-all w-fit cursor-help"
-                                                    >
-                                                        {row.address.slice(0, 6)}...{row.address.slice(-4)}
-                                                    </a>
+                                                    <div className="flex items-center gap-0.5 w-fit">
+                                                        <a
+                                                            href={getExplorerAddressUrl(row.address, row.network)}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            title={`${row.address} (${getNetworkLabel(row.network)})`}
+                                                            className="text-[10px] text-neon-cyan hover:text-neon-cyan/80 hover:underline font-mono transition-all cursor-help"
+                                                        >
+                                                            {row.address.slice(0, 6)}...{row.address.slice(-4)}
+                                                            <span className="ml-1 text-[8px] uppercase text-on-surface-variant/80">
+                                                                · {getNetworkLabel(row.network)}
+                                                            </span>
+                                                        </a>
+                                                        <CopyButton
+                                                            content={row.address}
+                                                            variant="ghost"
+                                                            size="xs"
+                                                            className="size-5 rounded-none text-on-surface-variant hover:text-neon-cyan hover:bg-neon-cyan/10"
+                                                            aria-label="Copy contract address"
+                                                        />
+                                                    </div>
                                                 ) : (
-                                                    <Link 
+                                                    <Link
                                                         href={`/dashboard/optimizations/${row.id}`}
                                                         className="text-[10px] text-neon-violet hover:text-neon-violet/80 hover:underline font-mono font-bold uppercase tracking-wider transition-all w-fit"
                                                     >

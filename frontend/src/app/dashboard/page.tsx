@@ -592,16 +592,16 @@ export default function DashboardPage() {
             <h2 className="text-xs font-mono font-bold uppercase tracking-widest text-neon-green">Security Pulse</h2>
             <LiquidButton
                 variant="default"
-                size="sm"
+                size="default"
                 disabled={scanStatus === "SCANNING"}
                 onClick={() => analyze()}
                 onMouseEnter={() => sparklesRef.current?.startAnimation()}
                 onMouseLeave={() => sparklesRef.current?.stopAnimation()}
-                className="font-mono uppercase text-[10px] tracking-widest rounded-none font-medium disabled:opacity-50 disabled:cursor-not-allowed h-6 px-3 whitespace-nowrap"
+                className="font-mono uppercase text-xs tracking-widest rounded-none font-medium disabled:opacity-50 disabled:cursor-not-allowed h-9 px-5 whitespace-nowrap"
             >
                 <SparklesIcon
                     ref={sparklesRef}
-                    size={12}
+                    size={14}
                     className="text-neon-green"
                 />
                 {scanStatus === "SCANNING" ? "Analyzing..." : "Analyze"}

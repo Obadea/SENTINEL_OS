@@ -32,7 +32,7 @@ const buttonVariants = cva(
       },
       size: {
         default: 'size-9',
-        xs: "size-7 [&_svg:not([class*='size-'])]:size-3.5 rounded-md",
+        xs: "size-6 [&_svg:not([class*='size-'])]:size-3 rounded-md",
         sm: 'size-8 rounded-md',
         lg: 'size-10 rounded-md',
       },

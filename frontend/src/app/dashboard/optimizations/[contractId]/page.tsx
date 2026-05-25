@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, use } from "react"
+import React, { useState, use, useEffect } from "react"
 import {
     IconDownload,
     IconRocket,
@@ -17,7 +17,8 @@ import {
     IconWallet,
     IconExternalLink,
     IconX,
-    IconLoader2
+    IconLoader2,
+    IconCircleCheck
 } from "@tabler/icons-react"
 import { BrowserProvider, ContractFactory } from "ethers"
 import Link from "next/link"
@@ -43,6 +44,8 @@ import {
     TooltipContent
 } from "@/components/animate-ui/primitives/animate/tooltip"
 import { useWallet } from "@/context/wallet-context"
+import { getExplorerAddressUrl, getExplorerBaseUrl, getNetworkLabel } from "@/lib/mantle-explorer"
+import { CopyButton } from "@/components/animate-ui/components/buttons/copy"
 import {
     PreviewLinkCard,
     PreviewLinkCardTrigger,
@@ -79,6 +82,8 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
     const [selectedPreviewFileId, setSelectedPreviewFileId] = useState<string | null>(null)
     const [previewTab, setPreviewTab] = useState<"original" | "optimized">("optimized")
     const [understandRisks, setUnderstandRisks] = useState(false)
+    const [standardInput, setStandardInput] = useState<any>(null)
+    const [compilerVersion, setCompilerVersion] = useState<string>("")
 
     const { data: analysis, isLoading, error, refetch } = useQuery({
         queryKey: ["analysis", contractId],
@@ -89,6 +94,14 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
             return response.data
         }
     })
+
+    useEffect(() => {
+        if (analysis?.network === "testnet" || analysis?.network === "mainnet") {
+            setNetwork(analysis.network)
+        }
+    }, [analysis?.network])
+
+    const explorerNetwork = analysis?.network ?? network
 
     const { data: historyData } = useQuery({
         queryKey: ["history"],
@@ -131,7 +144,8 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                 { label: "Compile Contract Source", status: "loading" as const },
                 { label: "Connect to Mantle Network", status: "idle" as const },
                 { label: "Authorize MetaMask Transaction", status: "idle" as const },
-                { label: "Confirm On-Chain Deployment", status: "idle" as const }
+                { label: "Confirm On-Chain Deployment", status: "idle" as const },
+                { label: "Verify & Publish on Explorer", status: "idle" as const }
             ]);
 
             try {
@@ -147,16 +161,19 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                     }))
                 });
 
-                const { abi: compiledAbi, bytecode: compiledBytecode, constructorArgs: args } = compResponse.data;
+                const { abi: compiledAbi, bytecode: compiledBytecode, constructorArgs: args, standardInput: stdInput, compilerVersion: compVer } = compResponse.data;
                 setAbi(compiledAbi);
                 setBytecode(compiledBytecode);
                 setConstructorArgs(args);
+                setStandardInput(stdInput);
+                setCompilerVersion(compVer);
 
                 setDeploySteps([
                     { label: "Compile Contract Source", status: "success" as const },
                     { label: "Connect to Mantle Network", status: "idle" as const },
                     { label: "Authorize MetaMask Transaction", status: "idle" as const },
-                    { label: "Confirm On-Chain Deployment", status: "idle" as const }
+                    { label: "Confirm On-Chain Deployment", status: "idle" as const },
+                    { label: "Verify & Publish on Explorer", status: "idle" as const }
                 ]);
             } catch (err: any) {
                 console.error("Auto compilation failed:", err);
@@ -164,7 +181,8 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                     { label: "Compile Contract Source", status: "error" as const, details: err.response?.data?.error || err.message || "Failed to compile contract." },
                     { label: "Connect to Mantle Network", status: "idle" as const },
                     { label: "Authorize MetaMask Transaction", status: "idle" as const },
-                    { label: "Confirm On-Chain Deployment", status: "idle" as const }
+                    { label: "Confirm On-Chain Deployment", status: "idle" as const },
+                    { label: "Verify & Publish on Explorer", status: "idle" as const }
                 ]);
                 sileo.error({ title: "Compilation Failed", description: err.response?.data?.error || "Solidity compiler error occurred." });
             } finally {
@@ -293,7 +311,8 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
             { label: "Compile Contract Source", status: "success" as const },
             { label: "Connect to Mantle Network", status: "loading" as const },
             { label: "Authorize MetaMask Transaction", status: "idle" as const },
-            { label: "Confirm On-Chain Deployment", status: "idle" as const }
+            { label: "Confirm On-Chain Deployment", status: "idle" as const },
+            { label: "Verify & Publish on Explorer", status: "idle" as const }
         ];
         setDeploySteps(initialSteps);
 
@@ -353,7 +372,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
             try {
                 const token = await getToken();
                 setAuthToken(token);
-                await api.patch(`/analysis/${contractId}/address`, { address });
+                await api.patch(`/analysis/${contractId}/address`, { address, network });
                 refetch();
             } catch (dbErr) {
                 console.error("Failed to update contract address in database:", dbErr);
@@ -362,10 +381,47 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
             setDeploySteps(prev => {
                 const next = [...prev];
                 next[3].status = "success";
+                next[4].status = "loading";
                 return next;
             });
 
             sileo.success({ title: "Contract Deployed!", description: `Deployed at ${address}` });
+
+            // 5. Auto-verify (with a 4-second delay for explorer indexing)
+            try {
+                await new Promise(resolve => setTimeout(resolve, 4000));
+
+                await api.post('/analysis/verify', {
+                    address,
+                    contractName: analysis.filename.replace(/\.sol$/i, ''),
+                    compilerVersion,
+                    standardInput,
+                    constructorArgs: constructorArgs.map((arg, idx) => ({
+                        type: arg.type,
+                        value: constructorValues[arg.name || idx] || ""
+                    })),
+                    network
+                });
+
+                setDeploySteps(prev => {
+                    const next = [...prev];
+                    next[4].status = "success";
+                    return next;
+                });
+
+                sileo.success({
+                    title: 'Contract Verified!',
+                    description: 'Source code is now publicly visible on Mantle Explorer.'
+                });
+            } catch (verifyErr: any) {
+                console.error("Verification failed:", verifyErr);
+                setDeploySteps(prev => {
+                    const next = [...prev];
+                    next[4].status = "error";
+                    next[4].details = `Verification failed: ${verifyErr.response?.data?.error || verifyErr.message || "Failed to verify contract."}. You can verify manually on the explorer.`;
+                    return next;
+                });
+            }
 
         } catch (err: any) {
             console.error("Deploy failed:", err);
@@ -449,6 +505,10 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
     const afterGas = parseFloat(String(gasProjection.after).replace(/,/g, ""));
     const gasSavedAmount = beforeGas - afterGas;
     const gasSavedPercent = beforeGas > 0 ? ((gasSavedAmount / beforeGas) * 100).toFixed(1) : "0";
+    const shareReportUrl =
+        typeof window !== "undefined"
+            ? `${window.location.origin}/report/${analysis.id}`
+            : `/report/${analysis.id}`;
 
     return (
         <div className="flex-1 flex flex-col h-full bg-[#050505] overflow-y-auto custom-scrollbar">
@@ -466,7 +526,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 text-neon-violet font-mono text-[10px] uppercase tracking-widest">
                             <IconShieldCheck className="w-3.5 h-3.5" />
-                            Optimization Report #{analysis.id.slice(-4)}
+                            Optimization Report #{analysis?.id?.slice(-4)}
                         </div>
                         <h1 title={analysis.filename} className="text-4xl font-heading font-black uppercase tracking-tighter text-on-surface">
                             {truncateName(analysis.filename, 25)}
@@ -475,9 +535,15 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                             AI-generated optimization summary focused on gas efficiency<br />
                             and memory management for{" "}
                             {analysis.address ? (
-                                <span title={analysis.address} className="text-neon-cyan hover:underline cursor-help font-mono font-bold">
+                                <a
+                                    href={getExplorerAddressUrl(analysis.address, explorerNetwork)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={analysis.address}
+                                    className="text-neon-cyan hover:underline font-mono font-bold"
+                                >
                                     {analysis.address.slice(0, 6)}...{analysis.address.slice(-4)}
-                                </span>
+                                </a>
                             ) : (
                                 "development"
                             )}{" "}
@@ -493,31 +559,43 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                             <IconDownload className="w-3.5 h-3.5" />
                             Download
                         </button>
-                        <button
-                            onClick={async () => {
-                                const shareUrl = `${window.location.origin}/report/${analysis.id}`;
-                                try {
-                                    await navigator.clipboard.writeText(shareUrl);
-                                    sileo.success({ title: "Report Shared", description: "Public audit report URL copied to clipboard!" });
-                                } catch (err) {
-                                    console.error(err);
-                                    sileo.error({ title: "Share Failed", description: "Failed to copy report URL." });
-                                }
-                            }}
-                            className="flex items-center gap-2 h-9 px-4 border border-neon-cyan/40 text-neon-cyan hover:bg-neon-cyan/5 hover:border-neon-cyan transition-all font-mono text-[9px] uppercase tracking-widest rounded-none"
+                        <PreviewLinkCard
+                            href={shareReportUrl}
+                            openDelay={50}
+                            closeDelay={100}
+                            colorScheme="dark"
                         >
-                            <IconShare className="w-3.5 h-3.5" />
-                            Share
-                        </button>
-                        {analysis.address ? (
-                            <button
-                                disabled
-                                className="h-9 px-4 border border-wireframe/45 text-on-surface-variant/40 font-mono text-[9px] uppercase tracking-widest rounded-none cursor-not-allowed flex items-center gap-2"
+                            <PreviewLinkCardTrigger
+                                onClick={async (e) => {
+                                    e.preventDefault();
+                                    try {
+                                        await navigator.clipboard.writeText(shareReportUrl);
+                                        sileo.success({ title: "Report Shared", description: "Public audit report URL copied to clipboard!" });
+                                    } catch (err) {
+                                        console.error(err);
+                                        sileo.error({ title: "Share Failed", description: "Failed to copy report URL." });
+                                    }
+                                }}
+                                className="flex items-center gap-2 h-9 px-4 border border-neon-cyan/40 text-neon-cyan hover:bg-neon-cyan/5 hover:border-neon-cyan transition-all font-mono text-[9px] uppercase tracking-widest rounded-none cursor-pointer"
                             >
-                                <IconRocket className="w-3.5 h-3.5" />
-                                Deployed at {analysis.address.slice(0, 6)}...{analysis.address.slice(-4)}
-                            </button>
-                        ) : (
+                                <IconShare className="w-3.5 h-3.5" />
+                                Share
+                            </PreviewLinkCardTrigger>
+                            <PreviewLinkCardContent
+                                className="bg-[#050505] border border-wireframe p-0 rounded-none shadow-[0_0_20px_rgba(0,229,255,0.15)] relative w-[240px] h-[135px] flex items-center justify-center overflow-hidden"
+                                target="_blank"
+                            >
+                                <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-neon-cyan z-10" />
+                                <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-neon-cyan z-10" />
+                                <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-neon-cyan z-10" />
+                                <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-neon-cyan z-10" />
+                                <PreviewLinkCardImage
+                                    alt="Public audit report preview"
+                                    className="w-[240px] h-[135px] object-cover"
+                                />
+                            </PreviewLinkCardContent>
+                        </PreviewLinkCard>
+                        {!analysis.address && (
                             <RippleButton
                                 onClick={handleOpenDeploy}
                                 className="h-9 px-4 bg-neon-green text-on-primary font-heading font-black text-[10px] uppercase tracking-widest rounded-none shadow-[0_0_15px_rgba(161,216,0,0.15)] flex items-center gap-2 hover:bg-neon-green/90 transition-all"
@@ -531,8 +609,68 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
             </div>
 
             {analysis.address && (
-                <div className="mx-8 mt-4 border border-neon-cyan/30 bg-neon-cyan/5 p-4 rounded-none font-mono text-[10px] text-neon-cyan uppercase tracking-wider leading-relaxed">
-                    ℹ️ This contract is already deployed at <span className="font-bold underline">{analysis.address}</span>. Deploy is only available for contracts audited here.
+                <div className="mx-8 mt-2 mb-2 relative flex items-start gap-4 border border-neon-cyan/25 bg-[#0a0a0a] p-4 ">
+                    <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-neon-cyan" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-neon-cyan/30 bg-neon-cyan/5">
+                        <IconCircleCheck className="h-5 w-5 text-neon-cyan" stroke={1.5} />
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col gap-2">
+                        <div>
+                            <p className="text-[9px] font-mono font-bold uppercase tracking-[0.25em] text-neon-cyan">
+                                Live_On_Chain
+                            </p>
+                            <p className="mt-1 text-[10px] font-mono uppercase tracking-wider text-on-surface-variant leading-relaxed">
+                                This contract is deployed on {getNetworkLabel(explorerNetwork)}. Redeploy is not available for this audit.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 border border-wireframe/60 bg-black/40 px-2.5 py-1.5 font-mono w-fit max-w-full">
+                            <PreviewLinkCard
+                                href={getExplorerAddressUrl(analysis.address, explorerNetwork)}
+                                openDelay={50}
+                                closeDelay={100}
+                            >
+                                <PreviewLinkCardTrigger
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={analysis.address}
+                                    className="text-[10px] font-mono text-neon-cyan hover:underline hover:text-neon-cyan/80 tabular-nums truncate max-w-[280px] cursor-pointer inline-flex items-center gap-1"
+                                >
+                                    {analysis.address}
+                                    <IconExternalLink className="h-3 w-3 shrink-0 opacity-60" />
+                                </PreviewLinkCardTrigger>
+                                <PreviewLinkCardContent
+                                    className="bg-[#050505] border border-wireframe p-0 rounded-none shadow-[0_0_20px_rgba(0,229,255,0.15)] relative w-[240px] h-[135px] flex items-center justify-center overflow-hidden"
+                                    target="_blank"
+                                >
+                                    <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-neon-cyan z-10" />
+                                    <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-neon-cyan z-10" />
+                                    <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-neon-cyan z-10" />
+                                    <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-neon-cyan z-10" />
+                                    <PreviewLinkCardImage
+                                        alt={`${getNetworkLabel(explorerNetwork)} contract explorer`}
+                                        className="w-[240px] h-[135px] object-cover"
+                                    />
+                                </PreviewLinkCardContent>
+                            </PreviewLinkCard>
+                            <span
+                                className={cn(
+                                    "shrink-0 text-[7px] font-bold uppercase tracking-widest border px-1.5 py-px",
+                                    explorerNetwork === "testnet"
+                                        ? "border-neon-cyan/35 text-neon-cyan bg-neon-cyan/5"
+                                        : "border-neon-green/35 text-neon-green bg-neon-green/5"
+                                )}
+                            >
+                                {explorerNetwork === "testnet" ? "SEP" : "MNT"}
+                            </span>
+                            <CopyButton
+                                content={analysis.address}
+                                variant="ghost"
+                                size="xs"
+                                className="size-5 shrink-0 rounded-none text-on-surface-variant hover:text-neon-cyan hover:bg-neon-cyan/10"
+                                aria-label="Copy contract address"
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -552,7 +690,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                 <div className="border border-wireframe p-8 bg-[#0a0a0a] relative group overflow-hidden">
                     <IconGauge className="absolute top-6 right-6 w-8 h-8 text-on-surface-variant/20 group-hover:text-neon-cyan/40 transition-colors" />
                     <div className="text-[10px] font-mono text-on-surface-variant uppercase tracking-[0.2em] mb-4">Execution Speed</div>
-                    <div className="text-5xl font-heading font-black text-neon-cyan mb-2">1.4x</div>
+                    <div className="text-5xl font-heading font-black text-neon-cyan mb-2">1.2x</div>
                     <div className="text-[10px] font-mono text-on-surface-variant/60 uppercase tracking-widest flex items-center gap-2">
                         <IconRocket className="w-3 h-3 text-neon-cyan" /> Optimized Loop Unrolling
                     </div>
@@ -1026,7 +1164,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                                             disabled={!isMetaMaskAvailable}
                                             className={cn(
                                                 "w-full h-9 border font-mono text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 rounded-none",
-                                                isMetaMaskAvailable 
+                                                isMetaMaskAvailable
                                                     ? "border-neon-cyan text-neon-cyan bg-transparent hover:bg-neon-cyan/5"
                                                     : "border-wireframe/30 text-on-surface-variant/40 cursor-not-allowed"
                                             )}
@@ -1067,7 +1205,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                                             <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-neon-cyan z-10" />
                                             <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-neon-cyan z-10" />
                                             <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-neon-cyan z-10" />
-                                            
+
                                             <PreviewLinkCardImage alt="Mantle Testnet Faucet" className="w-[240px] h-[135px] object-cover" />
                                         </PreviewLinkCardContent>
                                     </PreviewLinkCard>
@@ -1134,7 +1272,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                                             <span className="text-[10px] font-mono text-on-surface truncate pr-4">
                                                 {txHash}
                                             </span>
-                                            <PreviewLinkCard href={`${network === "testnet" ? "https://explorer.sepolia.mantle.xyz" : "https://explorer.mantle.xyz"}/tx/${txHash}`} openDelay={50} closeDelay={100}>
+                                            <PreviewLinkCard href={`${getExplorerBaseUrl(explorerNetwork)}/tx/${txHash}`} openDelay={50} closeDelay={100}>
                                                 <PreviewLinkCardTrigger
                                                     target="_blank"
                                                     rel="noopener noreferrer"
@@ -1152,7 +1290,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                                                     <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-neon-cyan z-10" />
                                                     <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-neon-cyan z-10" />
                                                     <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-neon-cyan z-10" />
-                                                    
+
                                                     <PreviewLinkCardImage alt="Transaction Explorer" className="w-[240px] h-[135px] object-cover" />
                                                 </PreviewLinkCardContent>
                                             </PreviewLinkCard>
@@ -1169,7 +1307,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                                             <span className="text-[10px] font-mono text-on-surface truncate pr-4 font-bold">
                                                 {contractAddress || analysis?.address}
                                             </span>
-                                            <PreviewLinkCard href={`${network === "testnet" ? "https://explorer.sepolia.mantle.xyz" : "https://explorer.mantle.xyz"}/address/${contractAddress || analysis?.address}`} openDelay={50} closeDelay={100}>
+                                            <PreviewLinkCard href={getExplorerAddressUrl(contractAddress || analysis?.address || "", explorerNetwork)} openDelay={50} closeDelay={100}>
                                                 <PreviewLinkCardTrigger
                                                     target="_blank"
                                                     rel="noopener noreferrer"
@@ -1187,7 +1325,7 @@ export default function OptimizationReportPage({ params }: { params: Promise<{ c
                                                     <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-neon-green z-10" />
                                                     <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-neon-green z-10" />
                                                     <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-neon-green z-10" />
-                                                    
+
                                                     <PreviewLinkCardImage alt="Contract Explorer" className="w-[240px] h-[135px] object-cover" />
                                                 </PreviewLinkCardContent>
                                             </PreviewLinkCard>

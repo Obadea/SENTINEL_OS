@@ -85,8 +85,6 @@ Return this exact JSON shape:
   const response = await genAI.models.generateContent({
     // NEW MODEL IS GEMINI 2.5 FLASH -- IS THE BEST MODEL 
     model: "gemini-flash-latest",
-    // model: "gemini-flash-lite-latest",
-    // model: "gemini-2.5-flash",
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     config: { responseMimeType: "application/json" }
   })

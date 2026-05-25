@@ -78,6 +78,10 @@
   --shadow-neon-violet: 0 0 10px rgba(221, 183, 255, 0.5);
 }
 
+html {
+  color-scheme: dark;
+}
+
 body {
   background-color: var(--color-background);
   color: var(--color-on-background);
@@ -85,6 +89,24 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
+}
+
+/* Clerk — map SENTINEL_OS palette to Clerk CSS variables */
+:root {
+  --clerk-color-primary: #a1d800;
+  --clerk-color-primary-foreground: #000000;
+  --clerk-color-foreground: #e5e2e1;
+  --clerk-color-muted-foreground: #8d9479;
+  --clerk-color-background: #050505;
+  --clerk-color-input: #0a0a0a;
+  --clerk-color-input-foreground: #ffffff;
+  --clerk-color-neutral: #2a2a2a;
+  --clerk-color-muted: #1c1b1b;
+  --clerk-color-border: rgba(255, 255, 255, 0.12);
+  --clerk-color-ring: #a1d800;
+  --clerk-color-modal-backdrop: rgba(0, 0, 0, 0.88);
+  --clerk-color-danger: #ffb4ab;
+  --clerk-color-success: #b8f600;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -110,6 +132,24 @@ body {
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
+#landing-scroll.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) rgba(255, 255, 255, 0.04);
+}
+
+#landing-scroll.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+#landing-scroll.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+#landing-scroll.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 0;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -117,6 +157,15 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Motion.dev–style hero terminal */
+.plus-terminal {
+  font-family: var(--font-landing-body, var(--font-mono)), ui-monospace, monospace;
+}
+
+.plus-terminal.home-plus-aikit-terminal {
+  position: relative;
 }
 
 /* Glassmorphism utility */
@@ -147,50 +196,137 @@ body {
 }
 
 
-/* NOTE: clerk UI customization */
+/* NOTE: Clerk UI — sign-in / sign-up modals & user profile */
+
+.cl-card,
+.cl-modalContent {
+  color: var(--color-on-surface) !important;
+}
+
+.cl-headerTitle,
+.cl-formHeaderTitle {
+  color: var(--color-neon-green) !important;
+}
+
+.cl-headerSubtitle,
+.cl-formHeaderSubtitle,
+.cl-dividerText {
+  color: var(--color-outline) !important;
+}
+
+.cl-socialButtonsBlockButton {
+  color: var(--color-on-surface) !important;
+  border-radius: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.cl-socialButtonsBlockButton:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--color-on-surface) !important;
+}
+
+.cl-socialButtonsBlockButtonText,
+.cl-socialButtonsBlockButtonText[data-color="inherit"],
+.cl-socialButtonsBlockButtonText[data-variant="buttonLarge"],
+.cl-socialButtonsBlockButton [data-color="inherit"],
+.cl-socialButtonsBlockButton span[data-color="inherit"],
+.cl-button[data-color="inherit"]:not(.cl-formButtonPrimary) {
+  color: var(--color-on-surface) !important;
+}
+
+.cl-socialButtonsBlockButtonText {
+  font-family: var(--font-mono) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.15em !important;
+  font-size: 10px !important;
+}
+
+/* Clerk portal root — ensure inherited tokens resolve on dark UI */
+.cl-rootBox,
+.cl-modalBackdrop {
+  --clerk-color-foreground: #e5e2e1;
+  --clerk-color-muted-foreground: #8d9479;
+  --clerk-color-background: #050505;
+  color-scheme: dark;
+}
+
+.cl-formFieldLabel {
+  color: var(--color-outline) !important;
+}
+
+.cl-formFieldInput,
+.cl-otpCodeFieldInput {
+  color: var(--color-on-surface) !important;
+  background-color: var(--color-surface-container-lowest) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.cl-formFieldInput::placeholder {
+  color: var(--color-outline) !important;
+  opacity: 0.7;
+}
+
+.cl-formButtonPrimary {
+  background-color: var(--color-neon-green) !important;
+  color: #000000 !important;
+}
+
+.cl-formButtonPrimary:hover {
+  background-color: color-mix(in srgb, var(--color-neon-green) 90%, black) !important;
+  color: #000000 !important;
+}
+
+.cl-footerActionText {
+  color: var(--color-outline) !important;
+}
+
+.cl-footerActionLink,
+.cl-formFieldAction,
+.cl-formResendCodeLink {
+  color: var(--color-neon-green) !important;
+}
+
+.cl-alternativeMethodsBlockButton {
+  color: var(--color-on-surface) !important;
+}
+
+.cl-alternativeMethodsBlockButton:hover {
+  color: var(--color-neon-green) !important;
+}
 
 [data-localization-key="userProfile.navbar.title"] {
-  color: #ffffff !important;
+  color: var(--color-on-surface) !important;
 }
 
 [data-localization-key="userProfile.navbar.description"] {
-  color: #8d9479 !important;
+  color: var(--color-outline) !important;
 }
 
-/* Section title texts - "Profile", "Email addresses", "Connected accounts" */
 .cl-profileSectionTitleText {
-  color: #ffffff !important;
+  color: var(--color-on-surface) !important;
 }
 
-/* Main body text - email address, "Google" */
 [data-variant="body"][data-color="inherit"] {
-  color: #ffffff !important;
+  color: var(--color-on-surface) !important;
 }
 
-/* Secondary text - "• obadeagbenga@gmail.com" next to Google */
 [data-variant="body"][data-color="secondary"] {
-  color: #8d9479 !important;
+  color: var(--color-outline) !important;
 }
 
-/* User's display name */
 .cl-userPreviewMainIdentifierText {
-  color: #ffffff !important;
+  color: var(--color-on-surface) !important;
 }
 
-/* "Update profile" and "Add email address" buttons */
 .cl-profileSectionPrimaryButton {
-  color: #a1d800 !important;
+  color: var(--color-neon-green) !important;
 }
 
-/* Header title - "Profile details" */
-.cl-headerTitle {
-  color: #a1d800 !important;
-}
-
-/* Badge - "Primary" */
 .cl-badge {
   color: #000000 !important;
-  background-color: #a1d800 !important;
+  background-color: var(--color-neon-green) !important;
 }
 
 /* Global Selection Style */

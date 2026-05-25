@@ -8,11 +8,14 @@ import { sileo } from "sileo"
 
 type ScanStatus = "IDLE" | "SCANNING" | "COMPLETE" | "FAILED"
 
+export type MantleNetwork = "mainnet" | "testnet"
+
 export interface ContractTab {
     id: string
     code: string
     fileName: string
     contractAddress: string | null
+    network: MantleNetwork | null
     scanStatus: ScanStatus
     scanProgress: number
     analysis: any | null
@@ -58,7 +61,7 @@ export function AuditProvider({ children }: { children: React.ReactNode }) {
             }
         }
         // Fallback / migration from legacy single-contract storage
-        const legacyCode = localStorage.getItem("sentinel_code") || `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\ncontract SentinelSecurity {\n    address public owner;\n\n    constructor() {\n        owner = msg.sender;\n    }\n}`
+        const legacyCode = localStorage.getItem("sentinel_code") || `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.35;\n\ncontract SentinelSecurity {\n    address public owner;\n\n    constructor() {\n        owner = msg.sender;\n    }\n}`
         const legacyFileName = localStorage.getItem("sentinel_fileName") || "SentinelSecurity.sol"
         const legacyAddress = localStorage.getItem("sentinel_contractAddress") || null
 
@@ -68,6 +71,7 @@ export function AuditProvider({ children }: { children: React.ReactNode }) {
                 code: legacyCode,
                 fileName: legacyFileName,
                 contractAddress: legacyAddress,
+                network: null,
                 scanStatus: "IDLE",
                 scanProgress: 0,
                 analysis: null,
@@ -101,6 +105,7 @@ export function AuditProvider({ children }: { children: React.ReactNode }) {
         code: "",
         fileName: "[untitled].sol",
         contractAddress: null,
+        network: null,
         scanStatus: "IDLE" as const,
         scanProgress: 0,
         analysis: null,
@@ -112,7 +117,7 @@ export function AuditProvider({ children }: { children: React.ReactNode }) {
     }, [activeTabId])
 
     const setFileName = useCallback((name: string) => {
-        setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, fileName: name, contractAddress: null } : t))
+        setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, fileName: name, contractAddress: null, network: null } : t))
     }, [activeTabId])
 
     const setContractAddress = useCallback((address: string | null) => {
@@ -132,9 +137,10 @@ export function AuditProvider({ children }: { children: React.ReactNode }) {
         const id = `tab-${Date.now()}`
         const newTab: ContractTab = {
             id,
-            code: code || `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\ncontract NewContract {\n    // Add contract code here\n}`,
+            code: code || `// SPDX-License-Identifier: MIT\npragma solidity ^0.8.35;\n\ncontract NewContract {\n    // Add contract code here\n}`,
             fileName: fileName || `UntitledContract-${nextIndex}.sol`,
             contractAddress: contractAddress || null,
+            network: null,
             scanStatus: "IDLE",
             scanProgress: 0,
             analysis: null,
@@ -163,12 +169,13 @@ export function AuditProvider({ children }: { children: React.ReactNode }) {
     }, [tabs, activeTabId])
 
     const mutation = useMutation({
-        mutationFn: async (payload: { files: any[], address: string | null, tabId: string, fileName: string }) => {
+        mutationFn: async (payload: { files: any[], address: string | null, network: MantleNetwork | null, tabId: string, fileName: string }) => {
             const token = await getToken()
             setAuthToken(token)
             const response = await api.post("/analysis/create", {
                 files: payload.files,
-                address: payload.address
+                address: payload.address,
+                network: payload.network
             })
             return response.data
         },
@@ -239,7 +246,7 @@ export function AuditProvider({ children }: { children: React.ReactNode }) {
             } : t))
         }
 
-        setTimeout(() => addSimulatedLog("Compiling 1 file with 0.8.20..."), 500)
+        setTimeout(() => addSimulatedLog(`Compiling ${targetTab.fileName} with solc 0.8.35...`), 500)
         setTimeout(() => addSimulatedLog("Compilation finished successfully."), 1200)
         setTimeout(() => addSimulatedLog("Starting vulnerability scan..."), 1800)
         setTimeout(() => addSimulatedLog(`Analyzing ${targetTab.fileName}...`), 2500)
@@ -248,6 +255,7 @@ export function AuditProvider({ children }: { children: React.ReactNode }) {
         mutation.mutate({
             files: [{ name: targetTab.fileName, content: targetTab.code }],
             address: targetTab.contractAddress,
+            network: targetTab.network,
             tabId: targetTabId,
             fileName: targetTab.fileName
         }, {
@@ -283,11 +291,13 @@ export function AuditProvider({ children }: { children: React.ReactNode }) {
 
                 // Open a new tab for this imported contract
                 const id = `tab-${Date.now()}`
+                const importNet: MantleNetwork = network === "testnet" ? "testnet" : "mainnet"
                 const newTab: ContractTab = {
                     id,
                     code: combinedCode,
                     fileName: `${contractName}.sol`,
                     contractAddress: address,
+                    network: importNet,
                     scanStatus: "IDLE",
                     scanProgress: 0,
                     analysis: null,

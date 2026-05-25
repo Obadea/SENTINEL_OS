@@ -18,6 +18,7 @@ import {
 import { SecurityPulseChart } from "@/components/security-pulse-chart";
 import { DotmSquare14 } from "@/components/ui/dotm-square-14";
 import { cn } from "@/lib/utils";
+import { getExplorerAddressUrl } from "@/lib/mantle-explorer";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/animate-ui/components/animate/tooltip";
 
 export default function PublicReportPage() {
@@ -216,7 +217,7 @@ export default function PublicReportPage() {
                   </div>
                   <div className="h-px bg-wireframe my-1" />
                   <a
-                    href={`https://mantlescan.xyz/address/${analysis.address}`}
+                    href={getExplorerAddressUrl(analysis.address, analysis.network)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full flex items-center justify-center gap-2 py-2 border border-neon-green/45 bg-neon-green/10 hover:bg-neon-green text-neon-green hover:text-black text-[9px] uppercase tracking-widest font-bold transition-all duration-350 cursor-pointer"

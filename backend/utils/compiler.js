@@ -26,7 +26,7 @@ function buildImportResolver(extraFiles = {}) {
     // Tier 2 — check node_modules (handles @openzeppelin etc.)
     const searchPaths = [
       resolve(NODE_MODULES, importPath),
-      resolve(NODE_MODULES, importPath.replace("@openzeppelin/contracts/", "")),
+      resolve(NODE_MODULES, "@openzeppelin", importPath),
     ];
 
     for (const fullPath of searchPaths) {
@@ -48,9 +48,9 @@ export function compileContract(files, contractName) {
   // files = [{ name: "MyContract.sol", content: "..." }, ...]
   const mainFile = files[0];
 
-  if (!mainFile.content.includes("^0.8") && !mainFile.content.match(/pragma solidity .+0\.8\./)) {
-    throw new Error("Currently supporting Solidity ^0.8.x only.");
-  }
+  // if (!mainFile.content.match(/pragma\s+solidity\s+[^;]*0\.[6-9]|pragma\s+solidity\s+[^;]*[1-9]\./)) {
+  //   throw new Error("Currently supporting Solidity ^0.8.x only.");
+  // }
 
   // Build sources — each file separate, never concatenated
   const sources = {};
@@ -63,7 +63,7 @@ export function compileContract(files, contractName) {
     extraFiles[f.name.split('/').pop()] = f.content;
   });
 
-  const input = {
+  const compilationInput = {
     language: "Solidity",
     sources,
     settings: {
@@ -72,9 +72,24 @@ export function compileContract(files, contractName) {
     }
   };
 
+  const verificationInput = {
+    language: "Solidity",
+    sources,
+    settings: {
+      outputSelection: { "*": { "*": ["*"] } },
+      optimizer: { enabled: true, runs: 200 }
+    }
+  };
+
   const output = JSON.parse(
-    solc.compile(JSON.stringify(input), { import: buildImportResolver(extraFiles) })
+    solc.compile(JSON.stringify(compilationInput), { import: buildImportResolver(extraFiles) })
   );
+
+  const warnings = output.errors?.filter(e => e.severity === "warning") || [];
+  if (warnings.length > 0) {
+    console.warn(`[COMPILER WARNINGS] ${contractName}:`);
+    warnings.forEach(w => console.warn(' ⚠', w.message));
+  }
 
   // Separate fatal errors from missing-import errors
   const errors = output.errors?.filter(e => e.severity === "error") || [];
@@ -90,7 +105,7 @@ export function compileContract(files, contractName) {
 
     throw new Error(
       `Missing imported files:\n${missing.map(m => `  • ${m}`).join('\n')}\n\n` +
-      `To compile this contract, please add these files in the editor using the + tab button.`
+      `Add these files as additional contract files in the deploy panel.`
     );
   }
 
@@ -130,6 +145,8 @@ export function compileContract(files, contractName) {
   return {
     abi: targetContract.abi,
     bytecode: targetContract.evm.bytecode.object,
-    contractName: targetKey
+    contractName: targetKey,
+    standardInput: verificationInput,
+    compilerVersion: solc.version()
   };
 }

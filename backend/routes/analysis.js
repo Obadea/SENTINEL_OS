@@ -4,6 +4,7 @@ import prisma from "../prisma/client.js";
 import { callAiAnalysis } from "../utils/ai.js";
 import { estimateGas } from "../utils/gas.js";
 import { compileContract } from "../utils/compiler.js";
+import { verifyContract } from "../utils/verify.js";
 
 const router = express.Router();
 
@@ -133,7 +134,9 @@ router.get("/import-contract", requireAuth(), async (req, res) => {
 
 router.post("/create", requireAuth(), async (req, res) => {
     try {
-        const { files, address } = req.body;
+        const { files, address, network } = req.body;
+        const normalizedNetwork =
+            network === "testnet" || network === "mainnet" ? network : null;
         if (!files || files.length === 0) {
             return res.status(400).json({ error: "No files provided" });
         }
@@ -189,7 +192,8 @@ router.post("/create", requireAuth(), async (req, res) => {
                 gasProjection: gasProjection,
                 mantleCompatibility: aiResult.mantleCompatibility,
                 summary: aiResult.summary,
-                address: address || null
+                address: address || null,
+                network: normalizedNetwork
             }
         });
 
@@ -225,6 +229,7 @@ router.get("/history", requireAuth(), async (req, res) => {
                     gasSavedPercent: true,
                     vulnerabilities: true,
                     address: true,
+                    network: true,
                     originalCode: true,
                     optimizedCode: true
                 }
@@ -241,6 +246,7 @@ router.get("/history", requireAuth(), async (req, res) => {
             gasEfficiency: r.gasSavedPercent,
             vulnerabilityCount: Array.isArray(r.vulnerabilities) ? r.vulnerabilities.length : 0,
             address: r.address,
+            network: r.network,
             originalCode: r.originalCode,
             optimizedCode: r.optimizedCode
         }));
@@ -312,7 +318,9 @@ router.post("/compile", requireAuth(), async (req, res) => {
             success: true,
             abi: result.abi,
             bytecode: result.bytecode,
-            constructorArgs: result.abi.find((item) => item.type === "constructor")?.inputs || []
+            constructorArgs: result.abi.find((item) => item.type === "constructor")?.inputs || [],
+            standardInput: result.standardInput,
+            compilerVersion: result.compilerVersion
         });
 
     } catch (error) {
@@ -368,10 +376,12 @@ router.get("/:id", requireAuth(), async (req, res) => {
 // 6. PATCH /api/analysis/:id/address
 router.patch("/:id/address", requireAuth(), async (req, res) => {
     try {
-        const { address } = req.body;
+        const { address, network } = req.body;
         if (!address) {
             return res.status(400).json({ error: "Address is required" });
         }
+        const normalizedNetwork =
+            network === "testnet" || network === "mainnet" ? network : undefined;
 
         const user = await getOrCreateUser(req.auth().userId);
         const analysis = await prisma.analysis.findFirst({
@@ -387,13 +397,37 @@ router.patch("/:id/address", requireAuth(), async (req, res) => {
 
         const updated = await prisma.analysis.update({
             where: { id: analysis.id },
-            data: { address }
+            data: {
+                address,
+                ...(normalizedNetwork ? { network: normalizedNetwork } : {})
+            }
         });
 
         res.json(updated);
     } catch (error) {
         console.error("Update address error:", error);
         res.status(500).json({ error: "Failed to update contract address" });
+    }
+});
+
+// 7. POST /api/analysis/verify
+router.post("/verify", requireAuth(), async (req, res) => {
+    try {
+        const { address, contractName, compilerVersion, standardInput, constructorArgs, network } = req.body;
+
+        const result = await verifyContract({
+            address,
+            contractName,
+            compilerVersion,
+            standardInput,
+            constructorArgs,
+            network
+        });
+
+        res.json({ success: true, result });
+    } catch (error) {
+        console.error("Verification error:", error);
+        res.status(400).json({ error: error.message });
     }
 });
 

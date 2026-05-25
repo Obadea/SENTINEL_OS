@@ -1,6 +1,9 @@
 "use client"
 
 import * as React from "react"
+import { useEffect, useState } from "react"
+import { useClerk } from "@clerk/nextjs"
+import { HelpModal } from "@/components/help-modal"
 import {
     IconCamera,
     IconDatabase,
@@ -30,8 +33,6 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { MessageCircleQuestion } from "./animate-ui/icons/message-circle-question"
-
 const data = {
     user: {
         name: "shadcn",
@@ -106,19 +107,19 @@ const data = {
     navSecondary: [
         {
             title: "Settings",
-            url: "#",
             icon: SettingsIcon,
+            action: "settings" as const,
         },
         {
             title: "Get Help",
-            url: "#",
             icon: CircleHelpIcon,
+            action: "help" as const,
         },
-        {
-            title: "Search",
-            url: "#",
-            icon: SearchIcon,
-        },
+        // {
+        //     title: "Search",
+        //     url: "#",
+        //     icon: SearchIcon,
+        // },
     ],
     documents: [
         {
@@ -140,6 +141,26 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+    const clerk = useClerk()
+    const [helpOpen, setHelpOpen] = useState(false)
+
+    useEffect(() => {
+        if (!helpOpen) return
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setHelpOpen(false)
+        }
+        window.addEventListener("keydown", onKeyDown)
+        return () => window.removeEventListener("keydown", onKeyDown)
+    }, [helpOpen])
+
+    const handleSecondaryAction = (action: "settings" | "help") => {
+        if (action === "settings") {
+            clerk.openUserProfile()
+        } else {
+            setHelpOpen(true)
+        }
+    }
+
     return (
         <Sidebar collapsible="offcanvas" {...props}>
             <SidebarHeader>
@@ -159,11 +180,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarHeader>
             <SidebarContent className="font-mono">
                 <NavMain items={data.navMain} />
-                <NavSecondary items={data.navSecondary} className="mt-auto" />
+                <NavSecondary
+                    items={data.navSecondary}
+                    className="mt-auto"
+                    onAction={handleSecondaryAction}
+                />
             </SidebarContent>
             <SidebarFooter>
                 <NavUser />
             </SidebarFooter>
+            <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
         </Sidebar>
     )
 }
