@@ -297,7 +297,7 @@ export default function DashboardPage() {
                                 e.stopPropagation();
                                 removeTab(tab.id);
                               }}
-                              className="p-0.5 text-on-surface-variant hover:text-[#ff4d4d] hover:bg-white/5 transition-colors ml-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                              className="p-0.5 text-on-surface-variant hover:text-[#ff4d4d] hover:bg-white/5  ml-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                             >
                               <IconX className="w-3 h-3" />
                             </button>
@@ -470,7 +470,7 @@ export default function DashboardPage() {
                       <div className="flex flex-col gap-4">
                         {analysis.vulnerabilities.map((v: any, i: number) => (
                           <div key={i} className={cn(
-                            "flex items-start gap-4 p-3 bg-white/[0.02] border-l-2",
+                            "flex items-start gap-4 p-3 bg-white/2 border-l-2",
                             v.severity === "HIGH" ? "border-[#ff4d4d]" :
                               v.severity === "MED" ? "border-neon-violet" :
                                 "border-neon-cyan"

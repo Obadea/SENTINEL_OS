@@ -28,11 +28,12 @@ type EditorLike = import("monaco-editor").editor.IStandaloneCodeEditor;
 type PositionLike = import("monaco-editor").Position;
 
 const COMPLETION_IDLE_MS = 1500;
-const LINT_IDLE_MS = 900;
-const LINT_MARKER_OWNER = "sentinel-gemini-lint";
+// const LINT_IDLE_MS = 900;
+// const LINT_MARKER_OWNER = "sentinel-gemini-lint";
 const MIN_CODE_CHARS = 24;
 const COMPLETION_TIMEOUT_MS = 45000;
 
+/*
 function parseLintJson(raw: string): LiveVulnerability[] {
   const trimmed = raw.trim();
   if (!trimmed) return [];
@@ -41,7 +42,7 @@ function parseLintJson(raw: string): LiveVulnerability[] {
     const parsed = JSON.parse(trimmed);
     if (Array.isArray(parsed)) return normalizeVulns(parsed);
   } catch {
-    /* try extract array */
+    // try extract array
   }
 
   const start = trimmed.indexOf("[");
@@ -51,7 +52,7 @@ function parseLintJson(raw: string): LiveVulnerability[] {
       const parsed = JSON.parse(trimmed.slice(start, end + 1));
       if (Array.isArray(parsed)) return normalizeVulns(parsed);
     } catch {
-      /* ignore */
+      // ignore
     }
   }
   return [];
@@ -72,6 +73,7 @@ function normalizeVulns(items: unknown[]): LiveVulnerability[] {
   }
   return out.slice(0, 12);
 }
+*/
 
 function buildCompletionPayload(
   code: string,
@@ -97,6 +99,7 @@ ${after}
 Suggest the next few lines of Solidity to type at the cursor.`;
 }
 
+/*
 function buildLintPayload(code: string, fileName: string): string {
   const snippet = code.length > 12000 ? code.slice(-12000) : code;
   return `[LINT]
@@ -118,6 +121,7 @@ function severityInlineClass(severity: LiveVulnerability["severity"]) {
   if (severity === "low") return "sentinel-inline-vuln-low";
   return "sentinel-inline-vuln-med";
 }
+*/
 
 export function useGeminiEditorLive(
   enabled: boolean,
@@ -127,24 +131,25 @@ export function useGeminiEditorLive(
   const [status, setStatus] = useState<GeminiAssistStatus>("off");
 
   const completionSession = useRef<GeminiLiveSession | null>(null);
-  const lintSession = useRef<GeminiLiveSession | null>(null);
+  // const lintSession = useRef<GeminiLiveSession | null>(null);
   const useLiveRef = useRef(false);
   const completionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // const lintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completionInflight = useRef(false);
-  const lintInflight = useRef(false);
+  // const lintInflight = useRef(false);
   const completionTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestCompletion = useRef<{
     insertText: string;
     lineNumber: number;
     column: number;
   } | null>(null);
-  const lintDecorationsRef = useRef<string[]>([]);
+  // const lintDecorationsRef = useRef<string[]>([]);
   const editorRef = useRef<EditorLike | null>(null);
   const monacoRef = useRef<MonacoLike | null>(null);
   const disposablesRef = useRef<Array<{ dispose: () => void }>>([]);
   const listenersWiredRef = useRef(false);
 
+  /*
   const applyLintResults = useCallback((vulns: LiveVulnerability[]) => {
     const editor = editorRef.current;
     const monaco = monacoRef.current;
@@ -188,6 +193,7 @@ export function useGeminiEditorLive(
       decorations
     );
   }, []);
+  */
 
   const showCompletion = useCallback((insertText: string) => {
     const editor = editorRef.current;
@@ -223,6 +229,7 @@ export function useGeminiEditorLive(
     [fileName, getToken]
   );
 
+  /*
   const fetchLintHttp = useCallback(
     async (code: string) => {
       const token = await getToken();
@@ -236,6 +243,7 @@ export function useGeminiEditorLive(
     },
     [fileName, getToken]
   );
+  */
 
   const requestCompletion = useCallback(
     async (code: string, position: PositionLike) => {
@@ -286,6 +294,7 @@ export function useGeminiEditorLive(
     [enabled, fileName, fetchCompletionHttp, isSignedIn, showCompletion]
   );
 
+  /*
   const requestLint = useCallback(
     async (code: string) => {
       if (!enabled || !isSignedIn || lintInflight.current) return;
@@ -317,6 +326,7 @@ export function useGeminiEditorLive(
     },
     [applyLintResults, enabled, fetchLintHttp, fileName, isSignedIn]
   );
+  */
 
   const scheduleCompletion = useCallback(
     (code: string, position: PositionLike) => {
@@ -331,6 +341,7 @@ export function useGeminiEditorLive(
     [requestCompletion, status]
   );
 
+  /*
   const scheduleLint = useCallback(
     (code: string) => {
       if (status === "off" || status === "connecting" || status === "error") {
@@ -343,6 +354,7 @@ export function useGeminiEditorLive(
     },
     [requestLint, status]
   );
+  */
 
   const wireEditorListeners = useCallback(() => {
     const editor = editorRef.current;
@@ -393,7 +405,7 @@ export function useGeminiEditorLive(
         if (!model || !pos) return;
         const value = model.getValue();
         scheduleCompletion(value, pos);
-        scheduleLint(value);
+        // scheduleLint(value);
       })
     );
 
@@ -405,11 +417,10 @@ export function useGeminiEditorLive(
       })
     );
 
-    const model = editor.getModel();
-    if (model?.getValue().trim().length >= MIN_CODE_CHARS) {
-      scheduleLint(model.getValue());
-    }
-  }, [enabled, isSignedIn, scheduleCompletion, scheduleLint, status]);
+    // const model = editor.getModel();
+    // if (model?.getValue().trim().length >= MIN_CODE_CHARS) {
+    //   scheduleLint(model.getValue());
+  }, [enabled, isSignedIn, scheduleCompletion, status]);
 
   const attachEditor = useCallback(
     (editor: EditorLike, monaco: MonacoLike) => {
@@ -427,18 +438,18 @@ export function useGeminiEditorLive(
     disposablesRef.current = [];
     listenersWiredRef.current = false;
     if (editor && monaco) {
-      const model = editor.getModel();
-      if (model) {
-        monaco.editor.setModelMarkers(model, LINT_MARKER_OWNER, []);
-      }
-      lintDecorationsRef.current = editor.deltaDecorations(
-        lintDecorationsRef.current,
-        []
-      );
+      // const model = editor.getModel();
+      // if (model) {
+      //   monaco.editor.setModelMarkers(model, LINT_MARKER_OWNER, []);
+      // }
+      // lintDecorationsRef.current = editor.deltaDecorations(
+      //   lintDecorationsRef.current,
+      //   []
+      // );
     }
     editorRef.current = null;
     monacoRef.current = null;
-    lintDecorationsRef.current = [];
+    // lintDecorationsRef.current = [];
     latestCompletion.current = null;
   }, []);
 
@@ -459,15 +470,18 @@ export function useGeminiEditorLive(
     setStatus("connecting");
     const getClerkToken = () => getToken();
     const completion = new GeminiLiveSession("completion", getClerkToken);
-    const lint = new GeminiLiveSession("lint", getClerkToken);
+    // const lint = new GeminiLiveSession("lint", getClerkToken);
     completionSession.current = completion;
-    lintSession.current = lint;
+    // lintSession.current = lint;
 
     let cancelled = false;
 
     (async () => {
       try {
-        await Promise.all([completion.connect(), lint.connect()]);
+        await Promise.all([
+          completion.connect(),
+          // lint.connect(),
+        ]);
         if (cancelled) return;
         useLiveRef.current = true;
         setStatus("live");
@@ -487,12 +501,12 @@ export function useGeminiEditorLive(
       cancelled = true;
       useLiveRef.current = false;
       completion.disconnect();
-      lint.disconnect();
+      // lint.disconnect();
       completionSession.current = null;
-      lintSession.current = null;
+      // lintSession.current = null;
       setStatus("off");
       if (completionTimer.current) clearTimeout(completionTimer.current);
-      if (lintTimer.current) clearTimeout(lintTimer.current);
+      // if (lintTimer.current) clearTimeout(lintTimer.current);
       if (completionTimeout.current) clearTimeout(completionTimeout.current);
     };
   }, [enabled, getToken, isLoaded, isSignedIn]);

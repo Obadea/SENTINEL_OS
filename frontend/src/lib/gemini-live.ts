@@ -26,14 +26,16 @@ export class GeminiLiveSession {
   private ws: WebSocket | null = null;
   private ready = false;
   private pendingInput: string | null = null;
-  private handlers: Handlers = {};
+  private handlers: GeminiLiveHandlers = {};
+  // private handlers: Handlers = {};
 
   constructor(
     private channel: GeminiLiveChannel,
     private getToken: () => Promise<string | null>
-  ) {}
+  ) { }
 
-  setHandlers(handlers: Handlers) {
+  // setHandlers(handlers: Handlers) {
+  setHandlers(handlers: GeminiLiveHandlers) {
     this.handlers = handlers;
   }
 
