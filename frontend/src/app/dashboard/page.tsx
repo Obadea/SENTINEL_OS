@@ -586,9 +586,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Right: Security Pulse Sidebar */}
-        <div className="w-[340px] shrink-0 bg-[#050505] flex flex-col overflow-y-auto custom-scrollbar hidden lg:flex">
+        <div className="w-[340px] shrink-0 bg-[#050505] flex-col overflow-y-auto custom-scrollbar hidden lg:flex">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-wireframe min-h-[40.9px] gap-4">
+          <div className="flex items-center justify-between p-4 border-b border-wireframe gap-4">
             <h2 className="text-xs font-mono font-bold uppercase tracking-widest text-neon-green">Security Pulse</h2>
             <LiquidButton
                 variant="default"

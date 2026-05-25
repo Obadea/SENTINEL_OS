@@ -1,8 +1,62 @@
-import { GoogleGenAI } from "@google/genai"
-import * as Diff from 'diff'
+import OpenAI from "openai"
+import * as Diff from "diff"
 import "dotenv/config"
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+const client = new OpenAI({
+  baseURL: "https://openrouter.ai/api/v1",
+  apiKey: process.env.OPENROUTER_API_KEY,
+  defaultHeaders: {
+    "HTTP-Referer": process.env.OPENROUTER_HTTP_REFERER || "http://localhost:3000",
+    "X-OpenRouter-Title": "SENTINEL_OS",
+  },
+})
+
+// const AI_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
+// const AI_MODEL = "deepseek/deepseek-v4-flash:free"
+const AI_MODEL = "poolside/laguna-xs.2:free"
+
+function getCompletionText(completion) {
+  const choice = completion.choices?.[0]
+  const message = choice?.message
+  if (!message) return ""
+
+  const content = message.content
+  if (typeof content === "string" && content.trim()) {
+    return content.trim()
+  }
+  if (Array.isArray(content)) {
+    const text = content
+      .map((part) => {
+        if (typeof part === "string") return part
+        if (part?.type === "text" && part.text) return part.text
+        return ""
+      })
+      .join("")
+    if (text.trim()) return text.trim()
+  }
+
+  // Fallback when OpenRouter puts output only in reasoning fields
+  const fallback = []
+  if (typeof message.reasoning === "string" && message.reasoning.trim()) {
+    fallback.push(message.reasoning)
+  }
+  if (typeof message.reasoning_content === "string" && message.reasoning_content.trim()) {
+    fallback.push(message.reasoning_content)
+  }
+  const details = message.reasoning_details
+  if (Array.isArray(details)) {
+    for (const detail of details) {
+      if (detail?.type === "reasoning.text" && detail.text) {
+        fallback.push(detail.text)
+      }
+    }
+  }
+  if (typeof message.refusal === "string" && message.refusal.trim()) {
+    fallback.push(message.refusal)
+  }
+
+  return fallback.join("\n").trim()
+}
 
 function computeChangedLines(originalCode, optimizedCode) {
   const removed = []
@@ -30,6 +84,10 @@ function computeChangedLines(originalCode, optimizedCode) {
 }
 
 export async function callAiAnalysis(code) {
+  if (!process.env.OPENROUTER_API_KEY) {
+    throw new Error("OPENROUTER_API_KEY is not set in environment")
+  }
+
   const prompt = `You are SENTINEL_OS, an expert Mantle L2 smart contract auditor.
 
 Analyze this Solidity contract and return ONLY valid JSON, no markdown, no explanation outside the JSON.
@@ -82,68 +140,88 @@ Return this exact JSON shape:
   "summary": "<2-3 sentence plain english summary of findings and what was fixed>"
 }`
 
-  const response = await genAI.models.generateContent({
-    // NEW MODEL IS GEMINI 2.5 FLASH -- IS THE BEST MODEL 
-    model: "gemini-flash-latest",
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    config: { responseMimeType: "application/json" }
-  })
-
-  let result;
+  let completion
   try {
-    const cleanJson = response.text.replace(/```json|```/g, "").trim();
-    result = JSON.parse(cleanJson);
+    completion = await client.chat.completions.create({
+      model: AI_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      // max_tokens: 16384,
+      // Reasoning runs internally; exclude keeps the JSON answer in `content`
+      reasoning: { enabled: true, exclude: true },
+    })
+  } catch (err) {
+    const status = err?.status
+    const hint =
+      status === 404
+        ? `Check OPENROUTER_API_KEY and model id (${AI_MODEL}).`
+        : status === 401
+          ? "Invalid or missing OPENROUTER_API_KEY."
+          : err?.message || "OpenRouter request failed"
+    throw new Error(`AI analysis failed (${status ?? "error"}): ${hint}`)
+  }
+
+  const rawText = getCompletionText(completion)
+  if (!rawText) {
+    const finishReason = completion.choices?.[0]?.finish_reason ?? "unknown"
+    console.error("AI empty response:", {
+      finishReason,
+      model: completion.model,
+      messageKeys: Object.keys(completion.choices?.[0]?.message ?? {}),
+    })
+    throw new Error(
+      `AI analysis returned an empty response (finish_reason: ${finishReason}). Try a shorter contract or a different model.`
+    )
+  }
+
+  let result
+  try {
+    const cleanJson = rawText.replace(/```json|```/g, "").trim()
+    result = JSON.parse(cleanJson)
   } catch (parseError) {
-    console.error("Gemini raw JSON parse error, attempting fallback repair:", parseError);
+    console.error("AI raw JSON parse error, attempting fallback repair:", parseError)
     try {
-      // Simple repair for trailing commas or missing closing structures
-      let repairedJson = response.text.replace(/```json|```/g, "").trim();
+      let repairedJson = rawText.replace(/```json|```/g, "").trim()
+      repairedJson = repairedJson.replace(/,\s*([\]}])/g, "$1")
 
-      // Remove trailing commas inside arrays or objects: e.g., ,] -> ] or ,} -> }
-      repairedJson = repairedJson.replace(/,\s*([\]}])/g, '$1');
-
-      // If still not ending in '}', append necessary closing brackets
-      if (!repairedJson.endsWith('}')) {
-        const openBraces = (repairedJson.match(/{/g) || []).length;
-        const closeBraces = (repairedJson.match(/}/g) || []).length;
+      if (!repairedJson.endsWith("}")) {
+        const openBraces = (repairedJson.match(/{/g) || []).length
+        const closeBraces = (repairedJson.match(/}/g) || []).length
         if (openBraces > closeBraces) {
-          repairedJson += '}'.repeat(openBraces - closeBraces);
+          repairedJson += "}".repeat(openBraces - closeBraces)
         }
       }
-      result = JSON.parse(repairedJson);
+      result = JSON.parse(repairedJson)
     } catch (secondError) {
-      console.error("JSON repair failed, falling back to empty structured result:", secondError);
+      console.error("JSON repair failed, falling back to empty structured result:", secondError)
       result = {
         optimizedCode: code,
         changedLines: { removed: [], added: [] },
         vulnerabilities: [],
         optimizations: [],
         optimizationInsights: [
-          "Contract too large for full rewrite. Security vulnerabilities and gas recommendations are listed above."
+          "Contract too large for full rewrite. Security vulnerabilities and gas recommendations are listed above.",
         ],
         gasProjection: { before: 0, after: 0, percent: 0 },
         mantleCompatibility: [
           { check: "L2 Data Availability Optimism", status: "pass" },
           { check: "Bedrock Execution Support", status: "pass" },
-          { check: "EigenDA Payload Alignment", status: "pass" }
+          { check: "EigenDA Payload Alignment", status: "pass" },
         ],
-        summary: "Unable to parse AI response. Displaying original contract without changes."
-      };
+        summary: "Unable to parse AI response. Displaying original contract without changes.",
+      }
     }
   }
 
-  // Normalize gasProjection types
   if (result.gasProjection) {
-    result.gasProjection.before = parseInt(result.gasProjection.before) || 0;
-    result.gasProjection.after = parseInt(result.gasProjection.after) || 0;
+    result.gasProjection.before = parseInt(result.gasProjection.before) || 0
+    result.gasProjection.after = parseInt(result.gasProjection.after) || 0
   }
 
-  // Compute diff accurately — never trust AI for line counting
   if (result.optimizedCode && result.optimizedCode.trim() !== code.trim()) {
-    result.changedLines = computeChangedLines(code, result.optimizedCode);
+    result.changedLines = computeChangedLines(code, result.optimizedCode)
   } else {
-    result.changedLines = { removed: [], added: [] };
+    result.changedLines = { removed: [], added: [] }
   }
 
-  return result;
+  return result
 }

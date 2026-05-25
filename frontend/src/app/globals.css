@@ -227,16 +227,8 @@ body {
   color: var(--color-on-surface) !important;
 }
 
-.cl-socialButtonsBlockButtonText,
-.cl-socialButtonsBlockButtonText[data-color="inherit"],
-.cl-socialButtonsBlockButtonText[data-variant="buttonLarge"],
-.cl-socialButtonsBlockButton [data-color="inherit"],
-.cl-socialButtonsBlockButton span[data-color="inherit"],
-.cl-button[data-color="inherit"]:not(.cl-formButtonPrimary) {
-  color: var(--color-on-surface) !important;
-}
-
 .cl-socialButtonsBlockButtonText {
+  color: var(--color-on-surface) !important;
   font-family: var(--font-mono) !important;
   text-transform: uppercase !important;
   letter-spacing: 0.15em !important;
@@ -306,14 +298,6 @@ body {
 
 .cl-profileSectionTitleText {
   color: var(--color-on-surface) !important;
-}
-
-[data-variant="body"][data-color="inherit"] {
-  color: var(--color-on-surface) !important;
-}
-
-[data-variant="body"][data-color="secondary"] {
-  color: var(--color-outline) !important;
 }
 
 .cl-userPreviewMainIdentifierText {

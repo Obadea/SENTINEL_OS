@@ -199,8 +199,12 @@ router.post("/create", requireAuth(), async (req, res) => {
 
         res.json(analysis);
     } catch (error) {
-        console.error("Create analysis error:", error);
-        res.status(500).json({ error: "Analysis failed" });
+        console.error("Create analysis error:", error?.message ?? error);
+        const message =
+            error instanceof Error && error.message.startsWith("AI analysis failed")
+                ? error.message
+                : "Analysis failed";
+        res.status(500).json({ error: message });
     }
 });
 

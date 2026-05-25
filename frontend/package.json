@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.3.5",
+    "@clerk/ui": "^1.13.1",
     "@floating-ui/react": "^0.27.19",
     "@headless-tree/core": "^1.7.0",
     "@headless-tree/react": "^1.7.0",

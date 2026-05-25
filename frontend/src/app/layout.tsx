@@ -24,6 +24,7 @@ export const metadata: Metadata = {
 };
 
 import { ClerkProvider, ClerkLoading, ClerkLoaded } from "@clerk/nextjs";
+import { ui } from "@clerk/ui";
 import { GlobalLoader } from "@/components/global-loader";
 import { clerkAppearance } from "@/lib/clerk-appearance";
 
@@ -35,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider appearance={clerkAppearance}>
+    <ClerkProvider appearance={clerkAppearance} ui={ui}>
       <html
         lang="en"
         className={`${geistSans.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}

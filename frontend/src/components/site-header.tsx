@@ -48,7 +48,7 @@ export function SiteHeader() {
                         <span className="text-on-surface font-bold">Claude AI</span>
                         <span className="text-on-surface-variant mx-1 opacity-30">•</span>
                         <span className="text-neon-cyan/60">Network</span>
-                        <span className="text-on-surface font-bold">Mantle Testnet</span>
+                        <span className="text-on-surface font-bold">Mantle</span>
                     </div>
 
                     <Separator
