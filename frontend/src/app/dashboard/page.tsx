@@ -398,6 +398,8 @@ export default function DashboardPage() {
             <SolidityEditor
               value={code}
               onChange={(val) => setCode(val || "")}
+              fileName={fileName || "Contract.sol"}
+              enableLiveAssist
             />
           </div>
 
@@ -588,23 +590,23 @@ export default function DashboardPage() {
         {/* Right: Security Pulse Sidebar */}
         <div className="w-[340px] shrink-0 bg-[#050505] flex-col overflow-y-auto custom-scrollbar hidden lg:flex">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-wireframe gap-4">
+          <div className="flex items-center justify-between py-0 px-4 border-b border-wireframe gap-4">
             <h2 className="text-xs font-mono font-bold uppercase tracking-widest text-neon-green">Security Pulse</h2>
             <LiquidButton
-                variant="default"
-                size="default"
-                disabled={scanStatus === "SCANNING"}
-                onClick={() => analyze()}
-                onMouseEnter={() => sparklesRef.current?.startAnimation()}
-                onMouseLeave={() => sparklesRef.current?.stopAnimation()}
-                className="font-mono uppercase text-xs tracking-widest rounded-none font-medium disabled:opacity-50 disabled:cursor-not-allowed h-9 px-5 whitespace-nowrap"
+              variant="default"
+              size="default"
+              disabled={scanStatus === "SCANNING"}
+              onClick={() => analyze()}
+              onMouseEnter={() => sparklesRef.current?.startAnimation()}
+              onMouseLeave={() => sparklesRef.current?.stopAnimation()}
+              className="font-mono uppercase text-xs tracking-widest rounded-none font-medium disabled:opacity-50 disabled:cursor-not-allowed h-9 px-5 whitespace-nowrap"
             >
-                <SparklesIcon
-                    ref={sparklesRef}
-                    size={14}
-                    className="text-neon-green"
-                />
-                {scanStatus === "SCANNING" ? "Analyzing..." : "Analyze"}
+              <SparklesIcon
+                ref={sparklesRef}
+                size={14}
+                className="text-neon-green"
+              />
+              {scanStatus === "SCANNING" ? "Analyzing..." : "Analyze"}
             </LiquidButton>
           </div>
 

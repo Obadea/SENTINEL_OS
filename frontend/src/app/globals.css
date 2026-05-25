@@ -346,3 +346,22 @@ body {
   font-weight: bold !important;
   font-size: 12px !important;
 }
+
+/* Gemini Live inline vulnerability hints (Monaco after-content) */
+.sentinel-inline-vuln-high {
+  color: #ff6b6b !important;
+  font-style: italic;
+  opacity: 0.85;
+}
+
+.sentinel-inline-vuln-med {
+  color: #ffb347 !important;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.sentinel-inline-vuln-low {
+  color: #8d9479 !important;
+  font-style: italic;
+  opacity: 0.75;
+}
