@@ -13,7 +13,8 @@ const client = new OpenAI({
 
 // const AI_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
 // const AI_MODEL = "deepseek/deepseek-v4-flash:free"
-const AI_MODEL = "poolside/laguna-xs.2:free"
+// const AI_MODEL = "poolside/laguna-xs.2:free"
+const AI_MODEL = "poolside/laguna-m.1:free"
 
 function getCompletionText(completion) {
   const choice = completion.choices?.[0]
@@ -108,7 +109,6 @@ For the "optimizedCode" field you MUST:
 2. Apply ALL gas optimizations (cache array lengths outside loops, use calldata instead of memory where possible, use ++i instead of i++, pack storage variables, etc.)
 3. Return the COMPLETE rewritten contract — every single line including unchanged functions, imports, and comments
 4. The output must be a valid, fully deployable Solidity file — not a summary or partial snippet
-5. Use ONLY the correct OpenZeppelin v5 import paths listed above
 6. Never import SafeMath — use native arithmetic
 7. Always pass initialOwner to Ownable constructor if the contract inherits Ownable
 
