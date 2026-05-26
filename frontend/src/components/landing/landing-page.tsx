@@ -725,7 +725,7 @@ export function LandingPage() {
 
         <main className="relative  pointer-events-none ">
           {/* Hero */}
-          <section className="relative min-h-[100vh] pointer-events-auto pt-[88px] px-5 lg:px-none">
+          <section className="relative min-h-[100vh] pointer-events-auto pt-[88px] px-6 lg:px-none">
             <div className="absolute inset-0 z-0 pointer-events-auto">
               <HexagonBackground
                 className="size-full h-screen !bg-background dark:!bg-background"
