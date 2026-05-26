@@ -22,7 +22,7 @@ export function RippleButton({
       hoverScale={hoverScale}
       tapScale={tapScale}
       className={`relative overflow-hidden ${className}`}
-      {...props}
+      {...(props as any)}
     >
       {children}
       <RippleButtonRipples />

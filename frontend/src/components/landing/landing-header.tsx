@@ -6,12 +6,12 @@ import { Show, SignInButton, SignUpButton } from "@clerk/nextjs"
 import { motion } from "./motion"
 import { cn } from "@/lib/utils"
 
-const NAV_LINKS = [
+const NAV_LINKS: readonly { readonly label: string; readonly href: string }[] = [
   // { label: "Docs", href: "#features" },
   // { label: "Optimizations", href: "/dashboard/optimizations" },
   // { label: "History", href: "/dashboard/history" },
   // { label: "API", href: "#" },
-] as const
+]
 
 function HeaderCta() {
   const btnClass = cn(
