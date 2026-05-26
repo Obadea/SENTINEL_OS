@@ -95,11 +95,56 @@ Analyze this Solidity contract and return ONLY valid JSON, no markdown, no expla
 Contract:
 ${code}
 
+CRITICAL — OPENZEPPELIN V5 IMPORT PATHS (you MUST use these exact paths in optimizedCode):
+The project uses @openzeppelin/contracts v5. Import paths changed significantly from v4.
+Use ONLY these correct v5 paths:
+
+SECURITY / UTILS:
+  ✅ @openzeppelin/contracts/utils/ReentrancyGuard.sol        (NOT security/)
+  ✅ @openzeppelin/contracts/utils/Pausable.sol               (NOT security/)
+  ✅ @openzeppelin/contracts/utils/ReentrancyGuardTransient.sol (new in v5)
+
+ACCESS CONTROL:
+  ✅ @openzeppelin/contracts/access/Ownable.sol               (unchanged)
+  ✅ @openzeppelin/contracts/access/Ownable2Step.sol          (unchanged)
+  ✅ @openzeppelin/contracts/access/AccessControl.sol         (unchanged)
+  ✅ @openzeppelin/contracts/access/manager/AccessManager.sol (new in v5)
+
+TOKENS:
+  ✅ @openzeppelin/contracts/token/ERC20/ERC20.sol            (unchanged)
+  ✅ @openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol  (unchanged)
+  ✅ @openzeppelin/contracts/token/ERC721/ERC721.sol          (unchanged)
+  ✅ @openzeppelin/contracts/token/ERC1155/ERC1155.sol        (unchanged)
+
+UTILS:
+  ✅ @openzeppelin/contracts/utils/Address.sol                (unchanged)
+  ✅ @openzeppelin/contracts/utils/math/Math.sol              (unchanged)
+  ✅ @openzeppelin/contracts/utils/math/SafeMath.sol          (removed in v5 — do NOT import, use native overflow checks)
+  ✅ @openzeppelin/contracts/utils/Strings.sol                (unchanged)
+  ✅ @openzeppelin/contracts/utils/cryptography/ECDSA.sol     (unchanged)
+
+OPENZEPPELIN V5 BREAKING CHANGES YOU MUST APPLY:
+1. SafeMath is REMOVED — never import it. Solidity ^0.8.x has built-in overflow protection
+2. Ownable constructor now requires explicit owner address: constructor(address initialOwner) Ownable(initialOwner) {}
+   NOT the old pattern: constructor() { _owner = msg.sender; } or just Ownable()
+3. ERC20 constructor: constructor(string name, string symbol) ERC20(name, symbol)  — unchanged
+4. _msgSender() and _msgData() are still available via Context but rarely needed directly
+5. Custom errors are preferred over require strings: error Unauthorized(); revert Unauthorized();
+6. ReentrancyGuard uses transient storage variant ReentrancyGuardTransient for chains that support EIP-1153
+
+SOLIDITY VERSION:
+- Latest supported version is 0.8.35 — use ^0.8.20 or higher, never flag it as an error
+- Native overflow/underflow protection is built in — no SafeMath needed
+- Use custom errors instead of revert strings for gas savings
+
 For the "optimizedCode" field you MUST:
 1. Fix ALL identified vulnerabilities (reentrancy, tx.origin abuse, integer overflow, etc.)
 2. Apply ALL gas optimizations (cache array lengths outside loops, use calldata instead of memory where possible, use ++i instead of i++, pack storage variables, etc.)
 3. Return the COMPLETE rewritten contract — every single line including unchanged functions, imports, and comments
 4. The output must be a valid, fully deployable Solidity file — not a summary or partial snippet
+5. Use ONLY the correct OpenZeppelin v5 import paths listed above
+6. Never import SafeMath — use native arithmetic
+7. Always pass initialOwner to Ownable constructor if the contract inherits Ownable
 
 Return this exact JSON shape:
 {
