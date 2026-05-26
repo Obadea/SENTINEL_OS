@@ -1262,7 +1262,7 @@ export function LandingPage() {
                   <a href="https://www.x.com/obadea0" target="_blank" className="text-on-surface-variant hover:text-neon-cyan transition-colors" aria-label="X">
                     <IconBrandX className="w-5 h-5" />
                   </a>
-                  <a href="https://www.github.com/obadea" target="_blank" className="text-on-surface-variant hover:text-primary-container transition-colors" aria-label="GitHub">
+                  <a href="https://github.com/Obadea/SENTINEL_OS" target="_blank" className="text-on-surface-variant hover:text-primary-container transition-colors" aria-label="GitHub">
                     <IconBrandGithub className="w-5 h-5" />
                   </a>
                 </div>

@@ -11,6 +11,15 @@ const NODE_MODULES = resolve(__dirname, "../node_modules");
 
 function buildImportResolver(extraFiles = {}) {
   return function findImport(importPath) {
+    // Redirect OpenZeppelin v4 security paths to v5 utils paths
+    const ozV4Redirects = {
+      '@openzeppelin/contracts/security/ReentrancyGuard.sol': '@openzeppelin/contracts/utils/ReentrancyGuard.sol',
+      '@openzeppelin/contracts/security/Pausable.sol': '@openzeppelin/contracts/utils/Pausable.sol',
+    }
+    if (ozV4Redirects[importPath]) {
+      importPath = ozV4Redirects[importPath]
+    }
+
     // Tier 1 — check files the user provided (multi-file upload)
     if (extraFiles[importPath]) {
       return { contents: extraFiles[importPath] };

@@ -1,4 +1,4 @@
-# 🛡️ SENTINEL_OS — Cyber-Industrial Smart Contract Auditor
+# SENTINEL_OS — Cyber-Industrial Smart Contract Auditor
 
 SENTINEL_OS is a high-fidelity, brutally industrial smart contract security workspace and analysis platform. It combines a real-time, interactive Next.js Solidity workspace with an event-driven Express/Inngest backend utilizing Google's Gemini Pro API to run deep, multi-pass security scans, gas optimizations, and L2 compatibility checks.
 
