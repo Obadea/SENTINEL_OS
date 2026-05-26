@@ -146,6 +146,15 @@ For the "optimizedCode" field you MUST:
 6. Never import SafeMath — use native arithmetic
 7. Always pass initialOwner to Ownable constructor if the contract inherits Ownable
 
+CRITICAL CODE QUALITY RULES for optimizedCode:
+- Every function, modifier, and identifier you reference MUST be declared or imported
+- Do NOT call _setupRole() unless the contract explicitly imports and inherits AccessControl
+- Do NOT call _transferOwnership(), _checkOwner(), or any internal OZ function unless you are certain it exists in the imported version
+- Do NOT mix patterns from different contracts — only use what is imported
+- After writing optimizedCode, mentally verify: does every function call resolve to something declared or imported?
+- If you are uncertain whether a function exists, use a simpler pattern you are confident about
+- The optimizedCode MUST compile with solc ^0.8.x with no errors — treat compilation errors as a critical failure
+
 Return this exact JSON shape:
 {
   "securityScore": <0-100 integer — score AFTER fixes are applied>,
