@@ -14,7 +14,8 @@ const client = new OpenAI({
 // const AI_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
 // const AI_MODEL = "deepseek/deepseek-v4-flash:free"
 // const AI_MODEL = "poolside/laguna-xs.2:free"
-const AI_MODEL = "poolside/laguna-m.1:free"
+// const AI_MODEL = "poolside/laguna-m.1:free"
+const AI_MODEL = process.env.OPENROUTER_AI_MODEL || "poolside/laguna-m.1:free"
 
 function getCompletionText(completion) {
   const choice = completion.choices?.[0]
